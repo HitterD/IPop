@@ -11,6 +11,5 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\SJAConnect.Shared\SJAConnect.Shared.csproj" />
-    <ProjectReference Include="..\SJAConnect.Infrastructure\SJAConnect.Infrastructure.csproj" />
   </ItemGroup>
 </Project>
