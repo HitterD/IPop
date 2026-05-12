@@ -3,6 +3,7 @@ using Serilog;
 using SJAConnect.Host;
 using SJAConnect.Host.Components;
 using SJAConnect.Infrastructure;
+using SJAConnect.Modules.Auth;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -13,6 +14,7 @@ builder.Host.UseSerilog((ctx, lc) => lc
 builder.Services.AddRazorComponents().AddInteractiveServerComponents();
 builder.Services.AddMudServices();
 builder.Services.AddInfrastructure(builder.Configuration);
+builder.Services.AddSJAConnectAuth(builder.Configuration);
 
 var modules = ModuleRegistry.Discover(new[]
 {
@@ -34,6 +36,8 @@ if (!app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 app.UseStaticFiles();
+app.UseAuthentication();
+app.UseAuthorization();
 app.UseAntiforgery();
 
 app.MapRazorComponents<App>().AddInteractiveServerRenderMode();

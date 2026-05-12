@@ -1,5 +1,6 @@
 using Serilog;
 using SJAConnect.Infrastructure;
+using SJAConnect.Modules.Auth;
 using SJAConnect.Shared.Abstractions;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -13,6 +14,7 @@ builder.Host.UseSerilog((ctx, lc) => lc
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddMediatR(cfg =>
     cfg.RegisterServicesFromAssemblyContaining<Program>());
+builder.Services.AddSJAConnectAuth(builder.Configuration);
 
 var modules = new IModule[]
 {
@@ -30,6 +32,8 @@ builder.Services.AddHealthChecks()
 var app = builder.Build();
 
 app.UseSerilogRequestLogging();
+app.UseAuthentication();
+app.UseAuthorization();
 
 app.MapHealthChecks("/health/live", new() { Predicate = _ => false });
 app.MapHealthChecks("/health/ready");
