@@ -1,5 +1,6 @@
 using MudBlazor.Services;
 using Serilog;
+using SJAConnect.Host;
 using SJAConnect.Host.Components;
 using SJAConnect.Infrastructure;
 
@@ -12,6 +13,15 @@ builder.Host.UseSerilog((ctx, lc) => lc
 builder.Services.AddRazorComponents().AddInteractiveServerComponents();
 builder.Services.AddMudServices();
 builder.Services.AddInfrastructure(builder.Configuration);
+
+var modules = ModuleRegistry.Discover(new[]
+{
+    typeof(SJAConnect.Modules.Sample.SampleModule).Assembly,
+});
+foreach (var m in modules)
+{
+    m.RegisterServices(builder.Services, builder.Configuration);
+}
 
 var app = builder.Build();
 
@@ -26,5 +36,9 @@ app.UseStaticFiles();
 app.UseAntiforgery();
 
 app.MapRazorComponents<App>().AddInteractiveServerRenderMode();
+foreach (var m in modules)
+{
+    m.MapEndpoints(app);
+}
 
 app.Run();
