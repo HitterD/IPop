@@ -24,6 +24,7 @@ public static class DependencyInjection
             _ => ConnectionMultiplexer.Connect(redisConn));
 
         services.AddSingleton<IClock, SystemClock>();
+        services.AddScoped<Legacy.ILegacyHrRepository, Legacy.LegacySjatrOdbcAdapter>();
 
         return services;
     }
