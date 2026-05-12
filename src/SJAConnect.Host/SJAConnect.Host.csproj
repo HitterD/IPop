@@ -7,5 +7,6 @@
     <ProjectReference Include="..\SJAConnect.Infrastructure\SJAConnect.Infrastructure.csproj" />
     <ProjectReference Include="..\SJAConnect.Shared\SJAConnect.Shared.csproj" />
     <ProjectReference Include="..\SJAConnect.Modules.Sample\SJAConnect.Modules.Sample.csproj" />
+    <ProjectReference Include="..\SJAConnect.Modules.Auth\SJAConnect.Modules.Auth.csproj" />
   </ItemGroup>
 </Project>

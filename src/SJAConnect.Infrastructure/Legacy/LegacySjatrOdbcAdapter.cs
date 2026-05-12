@@ -1,6 +1,7 @@
 using System.Data.Odbc;
 using System.Runtime.CompilerServices;
 using Microsoft.Extensions.Configuration;
+using SJAConnect.Modules.Auth.Application.Abstractions;
 
 namespace SJAConnect.Infrastructure.Legacy;
 
@@ -9,17 +10,17 @@ public sealed class LegacySjatrOdbcAdapter(IConfiguration configuration) : ILega
     private readonly string _connStr = configuration.GetConnectionString("SjatrOdbc")
         ?? throw new InvalidOperationException("Connection string 'SjatrOdbc' missing");
 
-    public async Task<LegacyEmployee?> FindByNikAsync(string nik, CancellationToken ct)
+    public async Task<LegacyEmployee?> FindByNikAsync(string nik, CancellationToken cancellationToken)
     {
         await using var conn = new OdbcConnection(_connStr);
-        await conn.OpenAsync(ct);
+        await conn.OpenAsync(cancellationToken);
         await using var cmd = conn.CreateCommand();
         cmd.CommandText =
             "SELECT NIK_HRIS, NAMA_KARYAWAN, NAMA_DEPARTEMEN, NAMA_JABATAN, LOKASI, NIK_SANTOS, KEYWORD " +
             "FROM M_karyawan WHERE NIK_HRIS = ?";
         cmd.Parameters.Add(new OdbcParameter("nik", nik));
-        await using var reader = await cmd.ExecuteReaderAsync(ct);
-        if (!await reader.ReadAsync(ct))
+        await using var reader = await cmd.ExecuteReaderAsync(cancellationToken);
+        if (!await reader.ReadAsync(cancellationToken))
         {
             return null;
         }
@@ -27,9 +28,9 @@ public sealed class LegacySjatrOdbcAdapter(IConfiguration configuration) : ILega
         return Map(reader);
     }
 
-    public async Task<LegacyEmployee?> AuthenticateAsync(string nik, string md5Password, CancellationToken ct)
+    public async Task<LegacyEmployee?> AuthenticateAsync(string nik, string md5Password, CancellationToken cancellationToken)
     {
-        var emp = await FindByNikAsync(nik, ct);
+        var emp = await FindByNikAsync(nik, cancellationToken);
         if (emp is null)
         {
             return null;
@@ -38,15 +39,15 @@ public sealed class LegacySjatrOdbcAdapter(IConfiguration configuration) : ILega
         return string.Equals(emp.Md5Keyword, md5Password, StringComparison.OrdinalIgnoreCase) ? emp : null;
     }
 
-    public async IAsyncEnumerable<LegacyEmployee> StreamAllAsync([EnumeratorCancellation] CancellationToken ct)
+    public async IAsyncEnumerable<LegacyEmployee> StreamAllAsync([EnumeratorCancellation] CancellationToken cancellationToken)
     {
         await using var conn = new OdbcConnection(_connStr);
-        await conn.OpenAsync(ct);
+        await conn.OpenAsync(cancellationToken);
         await using var cmd = conn.CreateCommand();
         cmd.CommandText =
             "SELECT NIK_HRIS, NAMA_KARYAWAN, NAMA_DEPARTEMEN, NAMA_JABATAN, LOKASI, NIK_SANTOS, KEYWORD FROM M_karyawan";
-        await using var reader = await cmd.ExecuteReaderAsync(ct);
-        while (await reader.ReadAsync(ct))
+        await using var reader = await cmd.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
         {
             yield return Map(reader);
         }

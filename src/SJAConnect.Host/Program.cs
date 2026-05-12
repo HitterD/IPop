@@ -17,6 +17,7 @@ builder.Services.AddInfrastructure(builder.Configuration);
 var modules = ModuleRegistry.Discover(new[]
 {
     typeof(SJAConnect.Modules.Sample.SampleModule).Assembly,
+    typeof(SJAConnect.Modules.Auth.AuthModule).Assembly,
 });
 foreach (var m in modules)
 {

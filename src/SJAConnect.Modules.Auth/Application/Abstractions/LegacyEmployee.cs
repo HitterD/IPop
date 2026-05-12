@@ -1,4 +1,4 @@
-namespace SJAConnect.Infrastructure.Legacy;
+namespace SJAConnect.Modules.Auth.Application.Abstractions;
 
 public sealed record LegacyEmployee(
     string NikHris,
