@@ -14,5 +14,6 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\SJAConnect.Shared\SJAConnect.Shared.csproj" />
     <ProjectReference Include="..\..\src\SJAConnect.Host\SJAConnect.Host.csproj" />
+    <ProjectReference Include="..\..\src\SJAConnect.Modules.Auth\SJAConnect.Modules.Auth.csproj" />
   </ItemGroup>
 </Project>

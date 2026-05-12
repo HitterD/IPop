@@ -21,6 +21,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SJAConnect.Modules.Sample",
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SJAConnect.IntegrationTests", "tests\SJAConnect.IntegrationTests\SJAConnect.IntegrationTests.csproj", "{20F1D91F-ADE6-4E89-B83E-2E6D7F7DCBEC}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SJAConnect.Modules.Auth", "src\SJAConnect.Modules.Auth\SJAConnect.Modules.Auth.csproj", "{414BAD45-264E-4255-B208-5883D0984881}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -115,6 +117,18 @@ Global
 		{20F1D91F-ADE6-4E89-B83E-2E6D7F7DCBEC}.Release|x64.Build.0 = Release|Any CPU
 		{20F1D91F-ADE6-4E89-B83E-2E6D7F7DCBEC}.Release|x86.ActiveCfg = Release|Any CPU
 		{20F1D91F-ADE6-4E89-B83E-2E6D7F7DCBEC}.Release|x86.Build.0 = Release|Any CPU
+		{414BAD45-264E-4255-B208-5883D0984881}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{414BAD45-264E-4255-B208-5883D0984881}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{414BAD45-264E-4255-B208-5883D0984881}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{414BAD45-264E-4255-B208-5883D0984881}.Debug|x64.Build.0 = Debug|Any CPU
+		{414BAD45-264E-4255-B208-5883D0984881}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{414BAD45-264E-4255-B208-5883D0984881}.Debug|x86.Build.0 = Debug|Any CPU
+		{414BAD45-264E-4255-B208-5883D0984881}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{414BAD45-264E-4255-B208-5883D0984881}.Release|Any CPU.Build.0 = Release|Any CPU
+		{414BAD45-264E-4255-B208-5883D0984881}.Release|x64.ActiveCfg = Release|Any CPU
+		{414BAD45-264E-4255-B208-5883D0984881}.Release|x64.Build.0 = Release|Any CPU
+		{414BAD45-264E-4255-B208-5883D0984881}.Release|x86.ActiveCfg = Release|Any CPU
+		{414BAD45-264E-4255-B208-5883D0984881}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -127,5 +141,6 @@ Global
 		{3F6B86B5-9A95-41AE-A7DF-AC3C5CEF90EE} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 		{EAF23116-5360-4B4D-8CA7-62AB8AA49E7E} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 		{20F1D91F-ADE6-4E89-B83E-2E6D7F7DCBEC} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
+		{414BAD45-264E-4255-B208-5883D0984881} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 	EndGlobalSection
 EndGlobal
