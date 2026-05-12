@@ -1,0 +1,48 @@
+# .NET
+bin/
+obj/
+*.user
+*.suo
+*.cache
+.vs/
+
+# Rider / VS Code
+.idea/
+.vscode/*
+!.vscode/launch.json
+!.vscode/settings.json
+
+# Test output
+TestResults/
+coverage/
+*.trx
+
+# Environment
+.env
+*.env.local
+appsettings.Development.local.json
+*.secret
+
+# Docker
+docker-compose.override.yml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+logs/
+*.log
+
+# Build output
+/publish/
+/dist/
+
+# MAUI / MSIX
+bin/Release/
+AppPackages/
+
+# DB
+*.mdf
+*.ldf
+*.ndf
