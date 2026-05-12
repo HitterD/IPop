@@ -1,0 +1,60 @@
+@page "/login"
+@using Microsoft.AspNetCore.Components
+@using MudBlazor
+@using SJAConnect.Modules.Auth.Application.Commands
+@inject MediatR.IMediator Mediator
+@inject NavigationManager Nav
+@inject ISnackbar Snackbar
+
+<PageTitle>Login — SJAConnect</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Small" Class="mt-10">
+    <MudPaper Class="pa-6" Elevation="2">
+        <MudText Typo="Typo.h4" Color="Color.Primary" Class="mb-4">Sign in</MudText>
+        <MudForm @ref="_form" @bind-IsValid="_isValid">
+            <MudTextField T="string" Label="NIK" @bind-Value="_nik" Required="true" RequiredError="NIK is required" />
+            <MudTextField T="string" Label="Password" @bind-Value="_password" InputType="InputType.Password" Required="true" RequiredError="Password is required" Class="mt-3" />
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="mt-6" Disabled="!_isValid || _submitting" OnClick="SubmitAsync" FullWidth="true">
+                @(_submitting ? "Signing in..." : "Sign in")
+            </MudButton>
+        </MudForm>
+    </MudPaper>
+</MudContainer>
+
+@code {
+    private MudForm? _form;
+    private bool _isValid;
+    private bool _submitting;
+    private string _nik = string.Empty;
+    private string _password = string.Empty;
+
+    private async Task SubmitAsync()
+    {
+        if (_form is null) return;
+        await _form.Validate();
+        if (!_isValid) return;
+
+        _submitting = true;
+        try
+        {
+            var result = await Mediator.Send(new LoginCommand(_nik, _password, null, null));
+            if (result.Success)
+            {
+                Snackbar.Add($"Welcome, {result.DisplayName}", Severity.Success);
+                Nav.NavigateTo("/");
+            }
+            else
+            {
+                Snackbar.Add(result.Error ?? "Login failed", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add("Login error: " + ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _submitting = false;
+        }
+    }
+}

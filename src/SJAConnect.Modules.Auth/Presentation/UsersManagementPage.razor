@@ -1,0 +1,8 @@
+@page "/admin/users"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Policy = SJAConnect.Shared.Auth.AuthorizationPolicies.RequireAdmin)]
+@using MudBlazor
+
+<PageTitle>Users — Admin</PageTitle>
+
+<MudText Typo="Typo.h4" Color="Color.Primary" Class="mb-4">User Management</MudText>
+<MudAlert Severity="Severity.Info">User list implementation arrives in later tasks — admin scaffolding only.</MudAlert>
