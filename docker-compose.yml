@@ -1,7 +1,7 @@
 services:
   sqlserver:
     image: mcr.microsoft.com/mssql/server:2022-latest
-    container_name: sjaconnect-sql
+    container_name: IPop-sql
     environment:
       ACCEPT_EULA: "Y"
       MSSQL_SA_PASSWORD: "DevP@ssw0rd2026"
@@ -18,7 +18,7 @@ services:
 
   redis:
     image: redis:7-alpine
-    container_name: sjaconnect-redis
+    container_name: IPop-redis
     ports:
       - "6379:6379"
     volumes:
@@ -31,7 +31,7 @@ services:
 
   opensearch:
     image: opensearchproject/opensearch:2.18.0
-    container_name: sjaconnect-opensearch
+    container_name: IPop-opensearch
     environment:
       - discovery.type=single-node
       - plugins.security.disabled=true

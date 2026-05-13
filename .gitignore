@@ -47,4 +47,7 @@ AppPackages/
 *.ldf
 *.ndf
 
-src/SJAConnect.Api/appsettings.*.local.json
+# Claude worktrees (agent isolation — never commit)
+.claude/worktrees/
+
+src/IPop.Api/appsettings.*.local.json

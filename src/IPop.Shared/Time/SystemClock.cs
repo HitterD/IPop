@@ -1,4 +1,4 @@
-namespace SJAConnect.Shared.Time;
+namespace IPop.Shared.Time;
 
 public sealed class SystemClock : IClock
 {

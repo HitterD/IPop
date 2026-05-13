@@ -1,4 +1,4 @@
-namespace SJAConnect.Shared.Abstractions;
+namespace IPop.Shared.Abstractions;
 
 public sealed record Error(string Code, string Message)
 {

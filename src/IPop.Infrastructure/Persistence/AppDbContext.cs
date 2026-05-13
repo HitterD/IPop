@@ -1,7 +1,8 @@
 using Microsoft.EntityFrameworkCore;
-using SJAConnect.Modules.Auth.Domain;
+using IPop.Modules.Auth.Domain;
+using IPop.Modules.Chat.Domain;
 
-namespace SJAConnect.Infrastructure.Persistence;
+namespace IPop.Infrastructure.Persistence;
 
 public sealed class AppDbContext : DbContext
 {
@@ -11,6 +12,12 @@ public sealed class AppDbContext : DbContext
     public DbSet<Role> Roles => Set<Role>();
     public DbSet<UserRole> UserRoles => Set<UserRole>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
+    public DbSet<DirectConversation> DirectConversations => Set<DirectConversation>();
+    public DbSet<DirectMessage> DirectMessages => Set<DirectMessage>();
+    public DbSet<DirectAttachment> DirectAttachments => Set<DirectAttachment>();
+    public DbSet<Channel> Channels => Set<Channel>();
+    public DbSet<ChannelMember> ChannelMembers => Set<ChannelMember>();
+    public DbSet<ChannelMessage> ChannelMessages => Set<ChannelMessage>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

@@ -4,9 +4,10 @@
     <PackageReference Include="Serilog.AspNetCore" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\SJAConnect.Infrastructure\SJAConnect.Infrastructure.csproj" />
-    <ProjectReference Include="..\SJAConnect.Shared\SJAConnect.Shared.csproj" />
-    <ProjectReference Include="..\SJAConnect.Modules.Sample\SJAConnect.Modules.Sample.csproj" />
-    <ProjectReference Include="..\SJAConnect.Modules.Auth\SJAConnect.Modules.Auth.csproj" />
+    <ProjectReference Include="..\IPop.Infrastructure\IPop.Infrastructure.csproj" />
+    <ProjectReference Include="..\IPop.Shared\IPop.Shared.csproj" />
+    <ProjectReference Include="..\IPop.Modules.Sample\IPop.Modules.Sample.csproj" />
+    <ProjectReference Include="..\IPop.Modules.Auth\IPop.Modules.Auth.csproj" />
+    <ProjectReference Include="..\IPop.Modules.Chat\IPop.Modules.Chat.csproj" />
   </ItemGroup>
 </Project>

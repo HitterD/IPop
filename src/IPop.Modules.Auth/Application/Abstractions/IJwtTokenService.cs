@@ -1,6 +1,6 @@
-using SJAConnect.Modules.Auth.Domain;
+using IPop.Modules.Auth.Domain;
 
-namespace SJAConnect.Modules.Auth.Application.Abstractions;
+namespace IPop.Modules.Auth.Application.Abstractions;
 
 public interface IJwtTokenService
 {

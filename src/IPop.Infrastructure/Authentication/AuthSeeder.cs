@@ -1,10 +1,10 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
-using SJAConnect.Infrastructure.Persistence;
-using SJAConnect.Modules.Auth.Application.Abstractions;
-using SJAConnect.Modules.Auth.Domain;
+using IPop.Infrastructure.Persistence;
+using IPop.Modules.Auth.Application.Abstractions;
+using IPop.Modules.Auth.Domain;
 
-namespace SJAConnect.Infrastructure.Authentication;
+namespace IPop.Infrastructure.Authentication;
 
 public static class AuthSeeder
 {
@@ -23,6 +23,13 @@ public static class AuthSeeder
         {
             adminRole = Role.Create(AuthConstants.AdminRole);
             await db.Roles.AddAsync(adminRole, cancellationToken);
+        }
+
+        var userRole = await db.Roles.SingleOrDefaultAsync(x => x.Name == AuthConstants.UserRole, cancellationToken);
+        if (userRole is null)
+        {
+            userRole = Role.Create(AuthConstants.UserRole);
+            await db.Roles.AddAsync(userRole, cancellationToken);
         }
 
         var user = await db.Users.SingleOrDefaultAsync(x => x.Nik == adminNik, cancellationToken);

@@ -3,18 +3,18 @@ using System.Security.Claims;
 using System.Text;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
-using SJAConnect.Modules.Auth.Application.Abstractions;
-using SJAConnect.Modules.Auth.Domain;
+using IPop.Modules.Auth.Application.Abstractions;
+using IPop.Modules.Auth.Domain;
 
-namespace SJAConnect.Modules.Auth.Infrastructure;
+namespace IPop.Modules.Auth.Infrastructure;
 
 public sealed class JwtTokenService(IConfiguration configuration) : IJwtTokenService
 {
     public string CreateAccessToken(User user, IReadOnlyCollection<string> roles)
     {
-        var issuer = configuration["Jwt:Issuer"] ?? "sjaconnect";
-        var audience = configuration["Jwt:Audience"] ?? "sjaconnect-users";
-        var key = configuration["Jwt:SigningKey"] ?? "dev-only-signing-key-change-in-production-32chars";
+        var issuer = configuration["Jwt:Issuer"] ?? "IPop";
+        var audience = configuration["Jwt:Audience"] ?? "IPop-users";
+        var key = JwtSigningKeyValidator.RequireKey(configuration);
         var minutes = int.TryParse(configuration["Jwt:AccessTokenMinutes"], out var v) ? v : 15;
 
         var claims = new List<Claim>

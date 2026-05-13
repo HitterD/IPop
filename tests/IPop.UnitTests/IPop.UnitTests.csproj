@@ -13,8 +13,10 @@
     <PackageReference Include="coverlet.collector" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\src\SJAConnect.Shared\SJAConnect.Shared.csproj" />
-    <ProjectReference Include="..\..\src\SJAConnect.Host\SJAConnect.Host.csproj" />
-    <ProjectReference Include="..\..\src\SJAConnect.Modules.Auth\SJAConnect.Modules.Auth.csproj" />
+    <ProjectReference Include="..\..\src\IPop.Shared\IPop.Shared.csproj" />
+    <ProjectReference Include="..\..\src\IPop.Host\IPop.Host.csproj" />
+    <ProjectReference Include="..\..\src\IPop.Modules.Auth\IPop.Modules.Auth.csproj" />
+    <ProjectReference Include="..\..\src\IPop.Modules.Chat\IPop.Modules.Chat.csproj" />
+    <ProjectReference Include="..\..\src\IPop.Infrastructure\IPop.Infrastructure.csproj" />
   </ItemGroup>
 </Project>

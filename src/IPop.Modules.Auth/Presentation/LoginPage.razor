@@ -2,60 +2,47 @@
 @using Microsoft.AspNetCore.Components
 @using Microsoft.AspNetCore.Components.Web
 @using MudBlazor
-@using SJAConnect.Modules.Auth.Application.Commands
-@inject MediatR.IMediator Mediator
 @inject NavigationManager Nav
-@inject ISnackbar Snackbar
 
-<PageTitle>Login — SJAConnect</PageTitle>
+<PageTitle>Login — IPop</PageTitle>
 
 <MudContainer MaxWidth="MaxWidth.Small" Class="mt-10">
     <MudPaper Class="pa-6" Elevation="2">
         <MudText Typo="Typo.h4" Color="Color.Primary" Class="mb-4">Sign in</MudText>
-        <MudForm @ref="_form" @bind-IsValid="_isValid">
-            <MudTextField T="string" Label="NIK" @bind-Value="_nik" Required="true" RequiredError="NIK is required" />
-            <MudTextField T="string" Label="Password" @bind-Value="_password" InputType="InputType.Password" Required="true" RequiredError="Password is required" Class="mt-3" />
-            <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="mt-6" Disabled="!_isValid || _submitting" OnClick="SubmitAsync" FullWidth="true">
-                @(_submitting ? "Signing in..." : "Sign in")
+        @if (!string.IsNullOrWhiteSpace(_error))
+        {
+            <MudAlert Severity="Severity.Error" Class="mb-4">@_error</MudAlert>
+        }
+        <form method="post" action="/auth/signin">
+            <input type="hidden" name="returnUrl" value="@_returnUrl" />
+            <MudTextField T="string" Label="NIK" name="nik" Required="true" RequiredError="NIK is required" />
+            <MudTextField T="string" Label="Password" name="password" InputType="InputType.Password" Required="true" RequiredError="Password is required" Class="mt-3" />
+            <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="mt-6" FullWidth="true">
+                Sign in
             </MudButton>
-        </MudForm>
+        </form>
     </MudPaper>
 </MudContainer>
 
 @code {
-    private MudForm? _form;
-    private bool _isValid;
-    private bool _submitting;
-    private string _nik = string.Empty;
-    private string _password = string.Empty;
+    private string? _error;
+    private string _returnUrl = "/";
 
-    private async Task SubmitAsync()
+    protected override void OnInitialized()
     {
-        if (_form is null) return;
-        await _form.Validate();
-        if (!_isValid) return;
-
-        _submitting = true;
-        try
+        var uri = Nav.ToAbsoluteUri(Nav.Uri);
+        var query = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(uri.Query);
+        if (query.TryGetValue("error", out var err))
         {
-            var result = await Mediator.Send(new LoginCommand(_nik, _password, null, null));
-            if (result.Success)
-            {
-                Snackbar.Add($"Welcome, {result.DisplayName}", Severity.Success);
-                Nav.NavigateTo("/");
-            }
-            else
-            {
-                Snackbar.Add(result.Error ?? "Login failed", Severity.Error);
-            }
+            _error = err.ToString();
         }
-        catch (Exception ex)
+        if (query.TryGetValue("returnUrl", out var back))
         {
-            Snackbar.Add("Login error: " + ex.Message, Severity.Error);
-        }
-        finally
-        {
-            _submitting = false;
+            var candidate = back.ToString();
+            if (!string.IsNullOrWhiteSpace(candidate) && Uri.IsWellFormedUriString(candidate, UriKind.Relative))
+            {
+                _returnUrl = candidate;
+            }
         }
     }
 }

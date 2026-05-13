@@ -1,10 +1,10 @@
 using Serilog;
-using SJAConnect.Infrastructure;
-using SJAConnect.Infrastructure.Authentication;
-using SJAConnect.Infrastructure.Persistence;
-using SJAConnect.Modules.Auth;
-using SJAConnect.Modules.Auth.Application.Abstractions;
-using SJAConnect.Shared.Abstractions;
+using IPop.Infrastructure;
+using IPop.Infrastructure.Authentication;
+using IPop.Infrastructure.Persistence;
+using IPop.Modules.Auth;
+using IPop.Modules.Auth.Application.Abstractions;
+using IPop.Shared.Abstractions;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -17,11 +17,11 @@ builder.Host.UseSerilog((ctx, lc) => lc
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddMediatR(cfg =>
     cfg.RegisterServicesFromAssemblyContaining<Program>());
-builder.Services.AddSJAConnectAuth(builder.Configuration);
+builder.Services.AddIPopAuth(builder.Configuration, builder.Environment);
 
 var modules = new IModule[]
 {
-    new SJAConnect.Modules.Auth.AuthModule(),
+    new IPop.Modules.Auth.AuthModule(),
 };
 foreach (var m in modules)
 {
@@ -49,7 +49,7 @@ app.UseAuthorization();
 app.MapHealthChecks("/health/live", new() { Predicate = _ => false });
 app.MapHealthChecks("/health/ready");
 
-app.MapGet("/", () => "SJAConnect API");
+app.MapGet("/", () => "IPop API");
 foreach (var m in modules)
 {
     m.MapEndpoints(app);

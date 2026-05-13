@@ -1,13 +1,13 @@
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
-using SJAConnect.Infrastructure.Authentication;
-using SJAConnect.Infrastructure.Persistence;
-using SJAConnect.Modules.Auth.Domain;
-using SJAConnect.Modules.Auth.Infrastructure;
+using IPop.Infrastructure.Authentication;
+using IPop.Infrastructure.Persistence;
+using IPop.Modules.Auth.Domain;
+using IPop.Modules.Auth.Infrastructure;
 using Xunit;
 
-namespace SJAConnect.UnitTests.Modules.Auth;
+namespace IPop.UnitTests.Modules.Auth;
 
 public class AuthSeederTests
 {
@@ -52,6 +52,7 @@ public class AuthSeederTests
 
         (await db.Users.CountAsync(x => x.Nik == "devadmin")).Should().Be(1);
         (await db.Roles.CountAsync(x => x.Name == AuthConstants.AdminRole)).Should().Be(1);
+        (await db.Roles.CountAsync(x => x.Name == AuthConstants.UserRole)).Should().Be(1);
         (await db.UserRoles.CountAsync()).Should().Be(1);
     }
 }

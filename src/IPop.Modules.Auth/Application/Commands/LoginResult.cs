@@ -1,4 +1,4 @@
-namespace SJAConnect.Modules.Auth.Application.Commands;
+namespace IPop.Modules.Auth.Application.Commands;
 
 public sealed record LoginResult(
     bool Success,

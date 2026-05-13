@@ -1,9 +1,60 @@
 @page "/admin/users"
-@attribute [Microsoft.AspNetCore.Authorization.Authorize(Policy = SJAConnect.Shared.Auth.AuthorizationPolicies.RequireAdmin)]
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Policy = IPop.Shared.Auth.AuthorizationPolicies.RequireAdmin)]
 @using Microsoft.AspNetCore.Components.Web
 @using MudBlazor
+@using IPop.Modules.Auth.Application.Abstractions
+@inject IUserRepository Users
 
 <PageTitle>Users — Admin</PageTitle>
 
 <MudText Typo="Typo.h4" Color="Color.Primary" Class="mb-4">User Management</MudText>
-<MudAlert Severity="Severity.Info">User list implementation arrives in later tasks — admin scaffolding only.</MudAlert>
+
+@if (_rows is null)
+{
+    <MudProgressCircular Indeterminate="true" />
+}
+else if (_rows.Count == 0)
+{
+    <MudAlert Severity="Severity.Info">No users yet. Sign in once to auto-provision from SJATR.</MudAlert>
+}
+else
+{
+    <MudTable Items="_rows" Dense="true" Hover="true">
+        <HeaderContent>
+            <MudTh>NIK</MudTh>
+            <MudTh>Display Name</MudTh>
+            <MudTh>Department</MudTh>
+            <MudTh>Position</MudTh>
+            <MudTh>Location</MudTh>
+            <MudTh>Roles</MudTh>
+            <MudTh>Active</MudTh>
+            <MudTh>Last Login</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd>@context.Nik</MudTd>
+            <MudTd>@context.DisplayName</MudTd>
+            <MudTd>@context.Department</MudTd>
+            <MudTd>@context.Position</MudTd>
+            <MudTd>@context.Location</MudTd>
+            <MudTd>@string.Join(", ", context.Roles)</MudTd>
+            <MudTd>@(context.IsActive ? "Yes" : "No")</MudTd>
+            <MudTd>@(context.LastLoginAt?.ToLocalTime().ToString("yyyy-MM-dd HH:mm") ?? "-")</MudTd>
+        </RowTemplate>
+    </MudTable>
+}
+
+@code {
+    private IReadOnlyList<UserListItem>? _rows;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _rows = await Users.ListAsync(default);
+        }
+        catch (Exception)
+        {
+            _rows = Array.Empty<UserListItem>();
+        }
+    }
+}

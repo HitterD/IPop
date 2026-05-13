@@ -1,9 +1,9 @@
 using System.Data.Odbc;
 using System.Runtime.CompilerServices;
 using Microsoft.Extensions.Configuration;
-using SJAConnect.Modules.Auth.Application.Abstractions;
+using IPop.Modules.Auth.Application.Abstractions;
 
-namespace SJAConnect.Infrastructure.Legacy;
+namespace IPop.Infrastructure.Legacy;
 
 public sealed class LegacySjatrOdbcAdapter(IConfiguration configuration) : ILegacyHrRepository
 {

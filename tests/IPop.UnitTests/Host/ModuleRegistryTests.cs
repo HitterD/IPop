@@ -1,11 +1,11 @@
 using FluentAssertions;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using SJAConnect.Host;
-using SJAConnect.Shared.Abstractions;
+using IPop.Host;
+using IPop.Shared.Abstractions;
 using Xunit;
 
-namespace SJAConnect.UnitTests.Host;
+namespace IPop.UnitTests.Host;
 
 public class ModuleRegistryTests
 {

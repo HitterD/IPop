@@ -1,6 +1,6 @@
-﻿<div class="top-row ps-3 navbar navbar-dark">
+<div class="top-row ps-3 navbar navbar-dark">
     <div class="container-fluid">
-        <a class="navbar-brand" href="">SJAConnect.Host</a>
+        <a class="navbar-brand" href="">IPop</a>
     </div>
 </div>
 
@@ -14,17 +14,44 @@
             </NavLink>
         </div>
 
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="counter">
-                <span class="bi bi-plus-square-fill-nav-menu" aria-hidden="true"></span> Counter
-            </NavLink>
-        </div>
+        <Microsoft.AspNetCore.Components.Authorization.AuthorizeView>
+            <NotAuthorized>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="login">
+                        <span class="bi bi-person-fill-nav-menu" aria-hidden="true"></span> Login
+                    </NavLink>
+                </div>
+            </NotAuthorized>
+            <Authorized>
+                <div class="nav-item px-3">
+                    <span class="nav-link text-white-50">Signed in as @context.User.Identity?.Name</span>
+                </div>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="chats">
+                        <span class="bi bi-chat-dots-nav-menu" aria-hidden="true"></span> Chats
+                    </NavLink>
+                </div>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="channels">
+                        <span class="bi bi-people-fill-nav-menu" aria-hidden="true"></span> Channels
+                    </NavLink>
+                </div>
+                <div class="nav-item px-3">
+                    <form method="post" action="/auth/signout">
+                        <button type="submit" class="nav-link" style="background:none;border:none;padding:0;color:#d7d7d7;cursor:pointer;">
+                            <span class="bi bi-door-closed-nav-menu" aria-hidden="true"></span> Logout
+                        </button>
+                    </form>
+                </div>
+            </Authorized>
+        </Microsoft.AspNetCore.Components.Authorization.AuthorizeView>
 
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="weather">
-                <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Weather
-            </NavLink>
-        </div>
+        <Microsoft.AspNetCore.Components.Authorization.AuthorizeView Policy="@IPop.Shared.Auth.AuthorizationPolicies.RequireAdmin">
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="admin/users">
+                    <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Admin · Users
+                </NavLink>
+            </div>
+        </Microsoft.AspNetCore.Components.Authorization.AuthorizeView>
     </nav>
 </div>
-

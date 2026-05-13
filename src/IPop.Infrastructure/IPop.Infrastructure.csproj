@@ -3,6 +3,7 @@
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>
   <ItemGroup>
+    <PackageReference Include="HtmlSanitizer" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" />
@@ -12,7 +13,8 @@
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\SJAConnect.Shared\SJAConnect.Shared.csproj" />
-    <ProjectReference Include="..\SJAConnect.Modules.Auth\SJAConnect.Modules.Auth.csproj" />
+    <ProjectReference Include="..\IPop.Shared\IPop.Shared.csproj" />
+    <ProjectReference Include="..\IPop.Modules.Auth\IPop.Modules.Auth.csproj" />
+    <ProjectReference Include="..\IPop.Modules.Chat\IPop.Modules.Chat.csproj" />
   </ItemGroup>
 </Project>

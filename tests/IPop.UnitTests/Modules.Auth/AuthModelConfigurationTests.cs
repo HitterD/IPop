@@ -1,10 +1,10 @@
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
-using SJAConnect.Infrastructure.Persistence;
-using SJAConnect.Modules.Auth.Domain;
+using IPop.Infrastructure.Persistence;
+using IPop.Modules.Auth.Domain;
 using Xunit;
 
-namespace SJAConnect.UnitTests.Modules.Auth;
+namespace IPop.UnitTests.Modules.Auth;
 
 public class AuthModelConfigurationTests
 {

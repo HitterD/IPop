@@ -2,7 +2,7 @@ using FluentAssertions;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Xunit;
 
-namespace SJAConnect.IntegrationTests;
+namespace IPop.IntegrationTests;
 
 public class SmokeTest : IClassFixture<WebApplicationFactory<Program>>
 {
@@ -17,7 +17,7 @@ public class SmokeTest : IClassFixture<WebApplicationFactory<Program>>
         var res = await client.GetAsync("/");
         res.IsSuccessStatusCode.Should().BeTrue();
         var body = await res.Content.ReadAsStringAsync();
-        body.Should().Contain("SJAConnect");
+        body.Should().Contain("IPop");
     }
 
     [Fact]

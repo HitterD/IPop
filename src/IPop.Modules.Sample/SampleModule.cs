@@ -3,9 +3,9 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using SJAConnect.Shared.Abstractions;
+using IPop.Shared.Abstractions;
 
-namespace SJAConnect.Modules.Sample;
+namespace IPop.Modules.Sample;
 
 public sealed class SampleModule : IModule
 {

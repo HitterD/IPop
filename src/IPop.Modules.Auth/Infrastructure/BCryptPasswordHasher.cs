@@ -1,6 +1,6 @@
-using SJAConnect.Modules.Auth.Application.Abstractions;
+using IPop.Modules.Auth.Application.Abstractions;
 
-namespace SJAConnect.Modules.Auth.Infrastructure;
+namespace IPop.Modules.Auth.Infrastructure;
 
 public sealed class BCryptPasswordHasher : IPasswordHasher
 {

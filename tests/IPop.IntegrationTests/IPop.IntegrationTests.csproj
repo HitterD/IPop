@@ -12,6 +12,6 @@
     <PackageReference Include="coverlet.collector" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\src\SJAConnect.Api\SJAConnect.Api.csproj" />
+    <ProjectReference Include="..\..\src\IPop.Api\IPop.Api.csproj" />
   </ItemGroup>
 </Project>

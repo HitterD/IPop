@@ -1,6 +1,6 @@
-using SJAConnect.Shared.Abstractions;
+using IPop.Shared.Abstractions;
 
-namespace SJAConnect.Shared.Domain;
+namespace IPop.Shared.Domain;
 
 public readonly record struct Nik
 {

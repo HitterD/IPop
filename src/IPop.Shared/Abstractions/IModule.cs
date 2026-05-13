@@ -2,7 +2,7 @@ using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace SJAConnect.Shared.Abstractions;
+namespace IPop.Shared.Abstractions;
 
 public interface IModule
 {

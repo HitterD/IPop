@@ -1,10 +1,10 @@
 using System.Security.Cryptography;
 using System.Text;
 using MediatR;
-using SJAConnect.Modules.Auth.Application.Abstractions;
-using SJAConnect.Modules.Auth.Domain;
+using IPop.Modules.Auth.Application.Abstractions;
+using IPop.Modules.Auth.Domain;
 
-namespace SJAConnect.Modules.Auth.Application.Commands;
+namespace IPop.Modules.Auth.Application.Commands;
 
 public sealed class LoginCommandHandler(
     IUserRepository users,

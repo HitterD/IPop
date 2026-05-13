@@ -1,4 +1,4 @@
-namespace SJAConnect.Shared.Auth;
+namespace IPop.Shared.Auth;
 
 public static class AuthorizationPolicies
 {

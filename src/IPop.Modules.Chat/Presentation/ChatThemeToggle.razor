@@ -1,0 +1,31 @@
+@using Microsoft.JSInterop
+@inject IJSRuntime Js
+
+<button type="button" class="theme-toggle" @onclick="ToggleAsync" title="Toggle dark mode" aria-label="Toggle dark mode">
+    <span>@(_theme == "dark" ? "Light" : "Dark")</span>
+</button>
+
+@code {
+    private string _theme = "light";
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        try
+        {
+            _theme = await Js.InvokeAsync<string>("ipopTheme.get");
+            await InvokeAsync(StateHasChanged);
+        }
+        catch
+        {
+            _theme = "light";
+        }
+    }
+
+    private async Task ToggleAsync()
+    {
+        _theme = _theme == "dark" ? "light" : "dark";
+        await Js.InvokeVoidAsync("ipopTheme.set", _theme);
+    }
+}

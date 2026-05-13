@@ -1,9 +1,9 @@
 using Microsoft.EntityFrameworkCore;
-using SJAConnect.Infrastructure.Persistence;
-using SJAConnect.Modules.Auth.Application.Abstractions;
-using SJAConnect.Modules.Auth.Domain;
+using IPop.Infrastructure.Persistence;
+using IPop.Modules.Auth.Application.Abstractions;
+using IPop.Modules.Auth.Domain;
 
-namespace SJAConnect.Infrastructure.Authentication;
+namespace IPop.Infrastructure.Authentication;
 
 public sealed class EfUserRepository(AppDbContext db) : IUserRepository
 {
@@ -29,5 +29,41 @@ public sealed class EfUserRepository(AppDbContext db) : IUserRepository
     public Task SaveChangesAsync(CancellationToken cancellationToken)
     {
         return db.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<UserListItem>> ListAsync(CancellationToken cancellationToken)
+    {
+        var rows = await db.Users
+            .AsNoTracking()
+            .OrderBy(x => x.Nik)
+            .Select(x => new
+            {
+                x.Id,
+                x.Nik,
+                x.DisplayName,
+                x.Department,
+                x.Position,
+                x.Location,
+                x.IsActive,
+                x.LastLoginAt,
+                Roles = x.Roles
+                    .Where(r => r.Role != null)
+                    .Select(r => r.Role!.Name)
+                    .ToList()
+            })
+            .ToListAsync(cancellationToken);
+
+        return rows
+            .Select(r => new UserListItem(
+                r.Id,
+                r.Nik,
+                r.DisplayName,
+                r.Department,
+                r.Position,
+                r.Location,
+                r.IsActive,
+                r.LastLoginAt,
+                r.Roles))
+            .ToList();
     }
 }

@@ -1,4 +1,4 @@
-namespace SJAConnect.Modules.Auth.Domain;
+namespace IPop.Modules.Auth.Domain;
 
 public static class AuthConstants
 {

@@ -1,8 +1,8 @@
-using SJAConnect.Infrastructure.Persistence;
-using SJAConnect.Modules.Auth.Application.Abstractions;
-using SJAConnect.Modules.Auth.Domain;
+using IPop.Infrastructure.Persistence;
+using IPop.Modules.Auth.Application.Abstractions;
+using IPop.Modules.Auth.Domain;
 
-namespace SJAConnect.Infrastructure.Authentication;
+namespace IPop.Infrastructure.Authentication;
 
 public sealed class EfAuditWriter(AppDbContext db) : IAuditWriter
 {

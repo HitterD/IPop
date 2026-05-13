@@ -11,7 +11,7 @@
     <NoWarn>$(NoWarn);CA1000;CA1305;CA1707;CA1716;CA1861;CA5351</NoWarn>
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
     <Company>PT. Santos Jaya Abadi</Company>
-    <Product>SJAConnect</Product>
+    <Product>IPop</Product>
     <Copyright>© PT. Santos Jaya Abadi 2026</Copyright>
   </PropertyGroup>
 </Project>

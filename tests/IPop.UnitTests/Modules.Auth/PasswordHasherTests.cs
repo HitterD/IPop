@@ -1,8 +1,8 @@
 using FluentAssertions;
-using SJAConnect.Modules.Auth.Infrastructure;
+using IPop.Modules.Auth.Infrastructure;
 using Xunit;
 
-namespace SJAConnect.UnitTests.Modules.Auth;
+namespace IPop.UnitTests.Modules.Auth;
 
 public class PasswordHasherTests
 {

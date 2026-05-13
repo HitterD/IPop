@@ -1,6 +1,6 @@
 using FluentValidation;
 
-namespace SJAConnect.Modules.Auth.Application.Commands;
+namespace IPop.Modules.Auth.Application.Commands;
 
 public sealed class LoginCommandValidator : AbstractValidator<LoginCommand>
 {

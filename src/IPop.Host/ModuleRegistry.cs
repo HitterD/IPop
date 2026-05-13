@@ -1,7 +1,7 @@
 using System.Reflection;
-using SJAConnect.Shared.Abstractions;
+using IPop.Shared.Abstractions;
 
-namespace SJAConnect.Host;
+namespace IPop.Host;
 
 public static class ModuleRegistry
 {

@@ -13,6 +13,6 @@
     <PackageReference Include="MudBlazor" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\SJAConnect.Shared\SJAConnect.Shared.csproj" />
+    <ProjectReference Include="..\IPop.Shared\IPop.Shared.csproj" />
   </ItemGroup>
 </Project>

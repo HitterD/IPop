@@ -1,4 +1,4 @@
-namespace SJAConnect.Modules.Auth.Application.Abstractions;
+namespace IPop.Modules.Auth.Application.Abstractions;
 
 public interface ILegacyHrRepository
 {

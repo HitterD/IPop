@@ -1,6 +1,6 @@
 -- Run after SQL container up, before EF migrations
-IF NOT EXISTS (SELECT 1 FROM sys.databases WHERE name = 'SJAConnect')
+IF NOT EXISTS (SELECT 1 FROM sys.databases WHERE name = 'IPop')
 BEGIN
-    CREATE DATABASE SJAConnect;
+    CREATE DATABASE IPop;
 END
 GO

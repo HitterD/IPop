@@ -1,4 +1,4 @@
-namespace SJAConnect.Shared.Abstractions;
+namespace IPop.Shared.Abstractions;
 
 public class Result
 {

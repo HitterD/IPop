@@ -1,0 +1,549 @@
+@page "/chats"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Policy = IPop.Shared.Auth.AuthorizationPolicies.RequireAuthenticated)]
+@using System.Net.Http.Json
+@using System.Security.Claims
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.AspNetCore.Components.Web
+@using Microsoft.AspNetCore.SignalR.Client
+@using Microsoft.JSInterop
+@using MudBlazor
+@using IPop.Modules.Auth.Application.Abstractions
+@using IPop.Modules.Chat.Application.Abstractions
+@using IPop.Modules.Chat.Application.Conversations
+@using IPop.Modules.Chat.Application.Messages
+@inject AuthenticationStateProvider AuthStateProvider
+@inject NavigationManager Nav
+@inject IChatRepository ChatRepository
+@inject IUserRepository Users
+@inject IJSRuntime Js
+@inject HttpClient Http
+@implements IAsyncDisposable
+
+<PageTitle>Chats — IPop</PageTitle>
+
+<div class="ipop-chat-shell">
+    <ChatThemeToggle />
+
+    <aside class="ipop-chat-sidebar @(_loaded ? "is-ready" : "")">
+        <header class="ipop-chat-sidebar__header">
+            <h1>Messages</h1>
+            <span class="ipop-chat-sidebar__hint">@(FilteredPeople.Count) people</span>
+        </header>
+        <label class="ipop-chat-search">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+            <input value="@_sidebarQuery" @oninput="OnSidebarSearchChanged" placeholder="Search people" />
+        </label>
+        @if (!_loaded)
+        {
+            @for (var i = 0; i < 5; i++)
+            {
+                <div class="ipop-chat-skeleton">
+                    <div class="ipop-chat-skeleton__avatar"></div>
+                    <div class="ipop-chat-skeleton__lines">
+                        <div class="ipop-chat-skeleton__line"></div>
+                        <div class="ipop-chat-skeleton__line short"></div>
+                    </div>
+                </div>
+            }
+        }
+        else if (FilteredPeople.Count == 0)
+        {
+            <div class="ipop-chat-empty">
+                <span class="ipop-chat-empty__glyph">◌</span>
+                <p>No active users found.</p>
+            </div>
+        }
+        else
+        {
+            <ul class="ipop-chat-people">
+                @{ var index = 0; }
+                @foreach (var person in FilteredPeople)
+                {
+                    var isActive = _selectedUserId == person.Id;
+                    var summary = _recentById.TryGetValue(person.Id, out var s) ? s : null;
+                    var stagger = index * 40;
+                    index++;
+                    <li class="ipop-chat-person @(isActive ? "is-active" : "")" style="--stagger: @(stagger)ms">
+                        <button type="button" @onclick="() => SelectUserAsync(person.Id)">
+                            <span class="ipop-chat-person__avatar">@Initials(person.DisplayName)</span>
+                            <span class="ipop-chat-person__body">
+                                <span class="ipop-chat-person__name-row">
+                                    <span class="ipop-chat-person__name">@person.DisplayName</span>
+                                    <span class="ipop-ext-chip">@Extension(person)</span>
+                                </span>
+                                <span class="ipop-chat-person__preview">@(summary?.LastMessagePreview ?? person.Department ?? person.Nik)</span>
+                            </span>
+                            @if (summary is not null)
+                            {
+                                <span class="ipop-chat-person__time">@Relative(summary.LastMessageAt)</span>
+                            }
+                        </button>
+                    </li>
+                }
+            </ul>
+        }
+    </aside>
+
+    <section class="ipop-chat-thread @(_loaded ? "is-ready" : "")">
+        @if (_selectedUserId is null)
+        {
+            <div class="ipop-chat-thread__placeholder">
+                <span class="ipop-chat-thread__placeholder-glyph">✉</span>
+                <h2>Pick a conversation</h2>
+                <p>Select a name on the left to start sending messages.</p>
+            </div>
+        }
+        else
+        {
+            <header class="ipop-chat-thread__header">
+                <div>
+                    <span class="ipop-chat-thread__avatar">@Initials(_selectedUserName)</span>
+                    <div>
+                        <h2>@_selectedUserName <span class="ipop-ext-chip">@(_selectedPerson is null ? "ext. —" : Extension(_selectedPerson))</span></h2>
+                        <p class="ipop-chat-thread__status">
+                            @if (_peerTyping)
+                            {
+                                <span class="ipop-typing"><span></span><span></span><span></span></span>
+                                <span>typing…</span>
+                            }
+                            else
+                            {
+                                <span>Direct message</span>
+                            }
+                        </p>
+                    </div>
+                </div>
+                <span class="ipop-chat-thread__connection @(_hubConnected ? "is-live" : "is-off")" title="@(_hubConnected ? "Realtime connected" : "Realtime offline")"></span>
+            </header>
+
+            <div class="ipop-chat-thread__stream" id="ipop-chat-stream">
+                @foreach (var msg in _messages)
+                {
+                    var mine = msg.SenderUserId == _currentUserId;
+                    var pending = _pendingClientIds.Contains(msg.ClientMessageId);
+                    <article class="ipop-chat-bubble @(mine ? "is-mine" : "is-theirs") @(pending ? "is-pending" : "")" data-client-id="@msg.ClientMessageId">
+                        <p>@msg.Body</p>
+                        <footer>
+                            <time>@msg.SentAt.ToLocalTime().ToString("HH:mm")</time>
+                            @if (mine)
+                            {
+                                <span class="ipop-chat-bubble__state">@(pending ? "sending" : "sent")</span>
+                            }
+                        </footer>
+                    </article>
+                }
+            </div>
+
+            <form class="ipop-chat-composer" id="ipop-chat-composer" @onsubmit="SendAsync" @onsubmit:preventDefault="true">
+                <div class="ipop-chat-toolbar">
+                    <button type="button" title="Bold">B</button>
+                    <button type="button" title="Italic">I</button>
+                    <button type="button" title="Underline">U</button>
+                    <button type="button" title="Link">Link</button>
+                    <button type="button" title="Emoji" @onclick="ToggleEmojiPicker">☺</button>
+                    <label class="ipop-chat-toolbar__file" title="Attach file">
+                        Attach
+                        <InputFile OnChange="UploadAttachmentAsync" />
+                    </label>
+                </div>
+                @if (_showEmojiPicker)
+                {
+                    <div class="emoji-popup">
+                        @foreach (var emoji in _emojis)
+                        {
+                            <button type="button" @onclick="() => AppendEmoji(emoji)">@emoji</button>
+                        }
+                    </div>
+                }
+                @if (_showMentionPopup && MentionMatches.Count > 0)
+                {
+                    <div class="mention-popup">
+                        <MudList T="UserListItem" Dense="true">
+                            @{ var mentionIndex = 0; }
+                            @foreach (var person in MentionMatches)
+                            {
+                                var active = mentionIndex == _mentionIndex;
+                                var captured = person;
+                                <MudListItem T="UserListItem" Class="@(active ? "is-active" : null)" OnClick="() => InsertMention(captured)">@person.DisplayName</MudListItem>
+                                mentionIndex++;
+                            }
+                        </MudList>
+                    </div>
+                }
+                @if (_uploadedAttachments.Count > 0)
+                {
+                    <div class="ipop-chat-composer__pills">
+                        @foreach (var attachment in _uploadedAttachments)
+                        {
+                            <span class="composer-pill">
+                                @attachment.OriginalName
+                                <button type="button" @onclick="() => RemoveAttachment(attachment.AttachmentId)">×</button>
+                            </span>
+                        }
+                    </div>
+                }
+                <textarea
+                    value="@_draft"
+                    @oninput="OnDraftInput"
+                    @onkeydown="OnComposerKeydown"
+                    placeholder="Write a message and press Enter"
+                    rows="2"></textarea>
+                <div class="ipop-chat-composer__actions">
+                    <span class="ipop-chat-composer__hint">Shift+Enter for newline</span>
+                    <button type="submit" disabled="@(!CanSend)">
+                        <span>Send</span>
+                        <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path d="M4 12l16-8-6 16-2-7z" fill="currentColor"/></svg>
+                    </button>
+                </div>
+            </form>
+        }
+    </section>
+
+    <ChatProfilePane CurrentUserId="_currentUserId" SelectedPerson="_selectedPerson" Photos="_photos" Files="_files" Links="_links" OnMessage="ScrollToComposerAsync" />
+</div>
+
+@code {
+    private readonly string[] _emojis = ["😀", "😂", "😊", "👍", "🙏", "🎉", "🔥", "✅"];
+    private Guid _currentUserId;
+    private Guid? _selectedUserId;
+    private string _selectedUserName = string.Empty;
+    private string _draft = string.Empty;
+    private string _sidebarQuery = string.Empty;
+    private bool _loaded;
+    private bool _hubConnected;
+    private bool _peerTyping;
+    private bool _localTyping;
+    private bool _showEmojiPicker;
+    private bool _showMentionPopup;
+    private int _mentionIndex;
+    private DateTimeOffset _lastTypingPing = DateTimeOffset.MinValue;
+    private IReadOnlyList<UserListItem> _people = Array.Empty<UserListItem>();
+    private UserListItem? _selectedPerson;
+    private IReadOnlyList<AttachmentDto> _photos = Array.Empty<AttachmentDto>();
+    private IReadOnlyList<AttachmentDto> _files = Array.Empty<AttachmentDto>();
+    private IReadOnlyList<string> _links = Array.Empty<string>();
+    private Dictionary<Guid, ConversationSummary> _recentById = new();
+    private List<ChatMessageDto> _messages = new();
+    private List<UploadedAttachment> _uploadedAttachments = new();
+    private HashSet<Guid> _pendingClientIds = new();
+    private HubConnection? _hub;
+    private CancellationTokenSource? _typingResetCts;
+
+    private IReadOnlyList<UserListItem> FilteredPeople => string.IsNullOrWhiteSpace(_sidebarQuery)
+        ? _people
+        : _people.Where(x => Contains(x.DisplayName, _sidebarQuery) || Contains(x.Nik, _sidebarQuery)).ToList();
+
+    private IReadOnlyList<UserListItem> MentionMatches => _people
+        .Where(x => Contains(x.DisplayName, CurrentMentionTerm()))
+        .Take(6)
+        .ToList();
+
+    private bool CanSend => (!string.IsNullOrWhiteSpace(_draft) || _uploadedAttachments.Count > 0) && _selectedUserId is not null && _hub is not null;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var auth = await AuthStateProvider.GetAuthenticationStateAsync();
+        var userIdClaim = auth.User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (!Guid.TryParse(userIdClaim, out _currentUserId))
+        {
+            Nav.NavigateTo("/login");
+            return;
+        }
+
+        var peopleTask = Users.ListAsync(default);
+        var recentTask = ChatRepository.ListRecentAsync(_currentUserId, default);
+        await Task.WhenAll(peopleTask, recentTask);
+
+        _people = (await peopleTask)
+            .Where(x => x.Id != _currentUserId && x.IsActive)
+            .OrderBy(x => x.DisplayName)
+            .ToList();
+        _recentById = (await recentTask).ToDictionary(x => x.OtherUserId);
+
+        _hub = new HubConnectionBuilder()
+            .WithUrl(Nav.ToAbsoluteUri("/hubs/chat"))
+            .WithAutomaticReconnect()
+            .Build();
+        _hub.On<ChatMessageDto>("DirectMessageReceived", OnMessageReceived);
+        _hub.On<Guid, bool>("TypingChanged", OnPeerTypingChanged);
+        _hub.Reconnected += _ => { _hubConnected = true; return InvokeAsync(StateHasChanged); };
+        _hub.Reconnecting += _ => { _hubConnected = false; return InvokeAsync(StateHasChanged); };
+        _hub.Closed += _ => { _hubConnected = false; return InvokeAsync(StateHasChanged); };
+
+        try
+        {
+            await _hub.StartAsync();
+            _hubConnected = true;
+        }
+        catch
+        {
+            _hubConnected = false;
+        }
+
+        _loaded = true;
+    }
+
+    private void OnSidebarSearchChanged(ChangeEventArgs args)
+    {
+        _sidebarQuery = args.Value?.ToString() ?? string.Empty;
+    }
+
+    private async Task SelectUserAsync(Guid userId)
+    {
+        _selectedUserId = userId;
+        _selectedPerson = _people.Single(x => x.Id == userId);
+        _selectedUserName = _selectedPerson.DisplayName;
+        _peerTyping = false;
+        _uploadedAttachments = new List<UploadedAttachment>();
+        _messages = (await ChatRepository.ListMessagesAsync(_currentUserId, userId, default)).ToList();
+        await RefreshProfileAttachmentsAsync(userId);
+        await ScrollToLatestAsync();
+    }
+
+    private async Task RefreshProfileAttachmentsAsync(Guid userId)
+    {
+        var photosTask = ChatRepository.ListAttachmentsAsync(_currentUserId, userId, "photos", default);
+        var filesTask = ChatRepository.ListAttachmentsAsync(_currentUserId, userId, "files", default);
+        await Task.WhenAll(photosTask, filesTask);
+        _photos = await photosTask;
+        _files = await filesTask;
+        _links = Array.Empty<string>();
+    }
+
+    private async Task SendAsync()
+    {
+        if (!CanSend) return;
+        var body = string.IsNullOrWhiteSpace(_draft) ? "Attachment" : _draft.Trim();
+        _draft = string.Empty;
+        _showMentionPopup = false;
+        _showEmojiPicker = false;
+        _uploadedAttachments = new List<UploadedAttachment>();
+
+        var clientMessageId = Guid.NewGuid();
+        var optimistic = new ChatMessageDto(Guid.NewGuid(), Guid.Empty, _currentUserId, _selectedUserId!.Value, clientMessageId, body, body, IPop.Modules.Chat.Domain.MessageType.Text, DateTimeOffset.UtcNow, null, null, Array.Empty<AttachmentDto>());
+        _messages.Add(optimistic);
+        _pendingClientIds.Add(clientMessageId);
+        await ScrollToLatestAsync();
+
+        try
+        {
+            await _hub!.InvokeAsync("SendDirectMessage", _selectedUserId!.Value, clientMessageId, body, _uploadedAttachments.Select(x => x.AttachmentId).ToArray());
+            await _hub!.InvokeAsync("NotifyTyping", _selectedUserId!.Value, false);
+            _localTyping = false;
+        }
+        catch
+        {
+            _messages.RemoveAll(x => x.ClientMessageId == clientMessageId);
+            _pendingClientIds.Remove(clientMessageId);
+            _draft = body;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private void OnMessageReceived(ChatMessageDto message)
+    {
+        if (_selectedUserId is null) return;
+        var belongsToOpenThread =
+            (message.SenderUserId == _currentUserId && message.RecipientUserId == _selectedUserId.Value) ||
+            (message.SenderUserId == _selectedUserId.Value && message.RecipientUserId == _currentUserId);
+        if (!belongsToOpenThread) return;
+
+        var existing = _messages.FirstOrDefault(x => x.ClientMessageId == message.ClientMessageId);
+        if (existing is not null)
+        {
+            var idx = _messages.IndexOf(existing);
+            _messages[idx] = message;
+            _pendingClientIds.Remove(message.ClientMessageId);
+        }
+        else
+        {
+            _messages.Add(message);
+        }
+
+        _ = InvokeAsync(async () =>
+        {
+            StateHasChanged();
+            await ScrollToLatestAsync();
+        });
+    }
+
+    private void OnPeerTypingChanged(Guid senderUserId, bool isTyping)
+    {
+        if (_selectedUserId != senderUserId) return;
+        _peerTyping = isTyping;
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private async Task OnComposerKeydown(KeyboardEventArgs e)
+    {
+        if (_showMentionPopup)
+        {
+            if (e.Key == "ArrowDown")
+            {
+                _mentionIndex = Math.Min(_mentionIndex + 1, Math.Max(0, MentionMatches.Count - 1));
+                return;
+            }
+
+            if (e.Key == "ArrowUp")
+            {
+                _mentionIndex = Math.Max(0, _mentionIndex - 1);
+                return;
+            }
+
+            if (e.Key == "Enter" && MentionMatches.Count > 0)
+            {
+                InsertMention(MentionMatches[_mentionIndex]);
+                return;
+            }
+        }
+
+        if (e.Key == "Enter" && !e.ShiftKey)
+        {
+            await SendAsync();
+            return;
+        }
+
+        await PingTypingAsync();
+    }
+
+    private async Task OnDraftInput(ChangeEventArgs args)
+    {
+        _draft = args.Value?.ToString() ?? string.Empty;
+        _showMentionPopup = _draft.Contains('@', StringComparison.Ordinal);
+        _mentionIndex = 0;
+        await PingTypingAsync();
+    }
+
+    private void ToggleEmojiPicker()
+    {
+        _showEmojiPicker = !_showEmojiPicker;
+    }
+
+    private void AppendEmoji(string emoji)
+    {
+        _draft = $"{_draft}{emoji}";
+        _showEmojiPicker = false;
+    }
+
+    private void InsertMention(UserListItem person)
+    {
+        var at = _draft.LastIndexOf('@');
+        _draft = at < 0 ? $"{_draft}@{person.DisplayName} " : $"{_draft[..at]}@{person.DisplayName} ";
+        _showMentionPopup = false;
+    }
+
+    private async Task UploadAttachmentAsync(InputFileChangeEventArgs args)
+    {
+        var file = args.File;
+        await using var stream = file.OpenReadStream(20 * 1024 * 1024);
+        using var content = new MultipartFormDataContent();
+        content.Add(new StreamContent(stream), "file", file.Name);
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/chat/attachments")
+        {
+            Content = content
+        };
+        request.Headers.Add("X-Requested-With", "IPopChat");
+        var response = await Http.SendAsync(request);
+        if (!response.IsSuccessStatusCode) return;
+
+        var uploaded = await response.Content.ReadFromJsonAsync<UploadedAttachment>();
+        if (uploaded is null) return;
+
+        _uploadedAttachments = _uploadedAttachments.Append(uploaded).ToList();
+    }
+
+    private void RemoveAttachment(Guid attachmentId)
+    {
+        _uploadedAttachments = _uploadedAttachments.Where(x => x.AttachmentId != attachmentId).ToList();
+    }
+
+    private async Task PingTypingAsync()
+    {
+        if (_hub is null || _selectedUserId is null) return;
+        var now = DateTimeOffset.UtcNow;
+        if (!_localTyping || now - _lastTypingPing > TimeSpan.FromSeconds(2))
+        {
+            _localTyping = true;
+            _lastTypingPing = now;
+            try { await _hub.InvokeAsync("NotifyTyping", _selectedUserId.Value, true); } catch { }
+        }
+
+        _typingResetCts?.Cancel();
+        _typingResetCts = new CancellationTokenSource();
+        var token = _typingResetCts.Token;
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await Task.Delay(TimeSpan.FromSeconds(3), token);
+                if (!token.IsCancellationRequested && _hub is not null && _selectedUserId is not null)
+                {
+                    _localTyping = false;
+                    try { await _hub.InvokeAsync("NotifyTyping", _selectedUserId.Value, false); } catch { }
+                }
+            }
+            catch (TaskCanceledException) { }
+        });
+    }
+
+    private async Task ScrollToLatestAsync()
+    {
+        try
+        {
+            await Js.InvokeVoidAsync("ipopChatScrollToBottom", "ipop-chat-stream");
+        }
+        catch { }
+    }
+
+    private async Task ScrollToComposerAsync()
+    {
+        try
+        {
+            await Js.InvokeVoidAsync("ipopTheme.scrollToComposer", "ipop-chat-composer");
+        }
+        catch { }
+    }
+
+    private string CurrentMentionTerm()
+    {
+        var at = _draft.LastIndexOf('@');
+        if (at < 0) return string.Empty;
+        return _draft[(at + 1)..].Trim();
+    }
+
+    private static bool Contains(string? value, string query) =>
+        !string.IsNullOrWhiteSpace(value) && value.Contains(query, StringComparison.OrdinalIgnoreCase);
+
+    private static string Extension(UserListItem person) => $"ext. {(string.IsNullOrWhiteSpace(person.Nik) ? "—" : person.Nik[..Math.Min(4, person.Nik.Length)])}";
+
+    private static string Initials(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return "·";
+        var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        return parts.Length == 1
+            ? parts[0][..Math.Min(2, parts[0].Length)].ToUpperInvariant()
+            : (parts[0][..1] + parts[^1][..1]).ToUpperInvariant();
+    }
+
+    private static string Relative(DateTimeOffset at)
+    {
+        var delta = DateTimeOffset.UtcNow - at;
+        if (delta < TimeSpan.FromMinutes(1)) return "now";
+        if (delta < TimeSpan.FromHours(1)) return $"{(int)delta.TotalMinutes}m";
+        if (delta < TimeSpan.FromDays(1)) return $"{(int)delta.TotalHours}h";
+        if (delta < TimeSpan.FromDays(7)) return $"{(int)delta.TotalDays}d";
+        return at.ToLocalTime().ToString("MMM d");
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        _typingResetCts?.Cancel();
+        if (_hub is not null)
+        {
+            await _hub.DisposeAsync();
+        }
+    }
+
+    private sealed record UploadedAttachment(Guid AttachmentId, string PreviewUrl, string OriginalName, long SizeBytes, string ContentType);
+}

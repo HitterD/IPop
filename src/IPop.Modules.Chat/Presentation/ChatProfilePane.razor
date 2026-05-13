@@ -1,0 +1,115 @@
+@using Microsoft.AspNetCore.Components
+@using IPop.Modules.Auth.Application.Abstractions
+@using IPop.Modules.Chat.Application.Messages
+
+<aside class="ipop-chat-profile">
+    @if (SelectedPerson is null)
+    {
+        <div class="ipop-chat-profile__empty">Select a person to view profile.</div>
+    }
+    else
+    {
+        <div class="ipop-chat-profile__cover"></div>
+        <div class="ipop-chat-profile__identity">
+            <span class="ipop-chat-profile__avatar">@Initials(SelectedPerson.DisplayName)</span>
+            <h2>@SelectedPerson.DisplayName</h2>
+            <span class="ipop-ext-chip">@Extension(SelectedPerson)</span>
+            <p>@(SelectedPerson.Position ?? SelectedPerson.Department ?? SelectedPerson.Location ?? "IPop user")</p>
+        </div>
+        <div class="ipop-chat-profile__actions">
+            <button type="button" @onclick="HandleMessageAsync">Message</button>
+            <a href="mailto:@EmailAddress(SelectedPerson)">Email</a>
+        </div>
+
+        <section class="ipop-chat-profile__section">
+            <div class="ipop-chat-profile__section-head">
+                <h3>Photos</h3>
+                <span>@Photos.Count</span>
+            </div>
+            <div class="ipop-chat-profile__photos">
+                @foreach (var photo in Photos.Take(5))
+                {
+                    <a href="@photo.DownloadUrl" target="_blank" rel="noopener" title="@photo.OriginalName">
+                        <img src="@photo.DownloadUrl" alt="@photo.OriginalName" />
+                    </a>
+                }
+                @if (Photos.Count > 5)
+                {
+                    <a class="ipop-chat-profile__photo-more" href="#">+@(Photos.Count - 5)</a>
+                }
+            </div>
+        </section>
+
+        <section class="ipop-chat-profile__section">
+            <div class="ipop-chat-profile__section-head">
+                <h3>Files</h3>
+                <span>@Files.Count</span>
+            </div>
+            <div class="ipop-chat-profile__list">
+                @foreach (var file in Files.Take(4))
+                {
+                    <a class="ipop-chat-profile__file" href="@file.DownloadUrl" target="_blank" rel="noopener">
+                        <span>@FileIcon(file.ContentType)</span>
+                        <span>@file.OriginalName</span>
+                    </a>
+                }
+            </div>
+        </section>
+
+        <section class="ipop-chat-profile__section">
+            <div class="ipop-chat-profile__section-head">
+                <h3>Links</h3>
+                <span>@Links.Count</span>
+            </div>
+            <div class="ipop-chat-profile__list">
+                @foreach (var link in Links.Take(4))
+                {
+                    <a class="ipop-chat-profile__link" href="@link" target="_blank" rel="noopener">@link</a>
+                }
+            </div>
+        </section>
+
+        <section class="ipop-chat-profile__section">
+            <div class="ipop-chat-profile__section-head">
+                <h3>Shortcuts</h3>
+            </div>
+            <div class="ipop-chat-profile__shortcuts">
+                <button type="button">Mute</button>
+                <button type="button">Pin</button>
+                <button type="button">Clear</button>
+            </div>
+        </section>
+    }
+</aside>
+
+@code {
+    [Parameter] public Guid CurrentUserId { get; set; }
+    [Parameter] public UserListItem? SelectedPerson { get; set; }
+    [Parameter] public IReadOnlyList<AttachmentDto> Photos { get; set; } = Array.Empty<AttachmentDto>();
+    [Parameter] public IReadOnlyList<AttachmentDto> Files { get; set; } = Array.Empty<AttachmentDto>();
+    [Parameter] public IReadOnlyList<string> Links { get; set; } = Array.Empty<string>();
+    [Parameter] public EventCallback OnMessage { get; set; }
+
+    private async Task HandleMessageAsync()
+    {
+        if (OnMessage.HasDelegate)
+        {
+            await OnMessage.InvokeAsync();
+        }
+    }
+
+    private static string Extension(UserListItem person) => $"ext. {(string.IsNullOrWhiteSpace(person.Nik) ? "—" : person.Nik[..Math.Min(4, person.Nik.Length)])}";
+
+    private static string EmailAddress(UserListItem person) => $"{person.Nik}@santos.internal";
+
+    private static string FileIcon(string contentType) => contentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase) ? "IMG" : "DOC";
+
+    private static string Initials(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return "·";
+        var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        return parts.Length == 1
+            ? parts[0][..Math.Min(2, parts[0].Length)].ToUpperInvariant()
+            : (parts[0][..1] + parts[^1][..1]).ToUpperInvariant();
+    }
+}

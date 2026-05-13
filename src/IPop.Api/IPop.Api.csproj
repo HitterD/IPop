@@ -11,8 +11,8 @@
     <PackageReference Include="Microsoft.FeatureManagement" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\SJAConnect.Infrastructure\SJAConnect.Infrastructure.csproj" />
-    <ProjectReference Include="..\SJAConnect.Shared\SJAConnect.Shared.csproj" />
-    <ProjectReference Include="..\SJAConnect.Modules.Auth\SJAConnect.Modules.Auth.csproj" />
+    <ProjectReference Include="..\IPop.Infrastructure\IPop.Infrastructure.csproj" />
+    <ProjectReference Include="..\IPop.Shared\IPop.Shared.csproj" />
+    <ProjectReference Include="..\IPop.Modules.Auth\IPop.Modules.Auth.csproj" />
   </ItemGroup>
 </Project>

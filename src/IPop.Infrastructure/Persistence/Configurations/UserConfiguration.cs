@@ -1,8 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using SJAConnect.Modules.Auth.Domain;
+using IPop.Modules.Auth.Domain;
 
-namespace SJAConnect.Infrastructure.Persistence.Configurations;
+namespace IPop.Infrastructure.Persistence.Configurations;
 
 public sealed class UserConfiguration : IEntityTypeConfiguration<User>
 {

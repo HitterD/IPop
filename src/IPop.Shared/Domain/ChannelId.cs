@@ -1,4 +1,4 @@
-namespace SJAConnect.Shared.Domain;
+namespace IPop.Shared.Domain;
 
 public readonly record struct ChannelId(Guid Value)
 {

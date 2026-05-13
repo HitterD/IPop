@@ -1,10 +1,10 @@
 using FluentAssertions;
 using FluentValidation;
 using MediatR;
-using SJAConnect.Shared.Abstractions;
+using IPop.Shared.Abstractions;
 using Xunit;
 
-namespace SJAConnect.UnitTests.Shared;
+namespace IPop.UnitTests.Shared;
 
 public class ValidationBehaviorTests
 {

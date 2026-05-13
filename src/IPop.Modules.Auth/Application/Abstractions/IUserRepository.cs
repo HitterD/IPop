@@ -1,6 +1,6 @@
-using SJAConnect.Modules.Auth.Domain;
+using IPop.Modules.Auth.Domain;
 
-namespace SJAConnect.Modules.Auth.Application.Abstractions;
+namespace IPop.Modules.Auth.Application.Abstractions;
 
 public interface IUserRepository
 {
@@ -8,4 +8,16 @@ public interface IUserRepository
     Task<IReadOnlyCollection<string>> GetRoleNamesAsync(Guid userId, CancellationToken cancellationToken);
     Task AddAsync(User user, CancellationToken cancellationToken);
     Task SaveChangesAsync(CancellationToken cancellationToken);
+    Task<IReadOnlyList<UserListItem>> ListAsync(CancellationToken cancellationToken);
 }
+
+public sealed record UserListItem(
+    Guid Id,
+    string Nik,
+    string DisplayName,
+    string? Department,
+    string? Position,
+    string? Location,
+    bool IsActive,
+    DateTimeOffset? LastLoginAt,
+    IReadOnlyCollection<string> Roles);
