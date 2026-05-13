@@ -1,6 +1,9 @@
 using Serilog;
 using SJAConnect.Infrastructure;
+using SJAConnect.Infrastructure.Authentication;
+using SJAConnect.Infrastructure.Persistence;
 using SJAConnect.Modules.Auth;
+using SJAConnect.Modules.Auth.Application.Abstractions;
 using SJAConnect.Shared.Abstractions;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -30,6 +33,14 @@ builder.Services.AddHealthChecks()
     .AddRedis(builder.Configuration.GetConnectionString("Redis")!, name: "redis");
 
 var app = builder.Build();
+
+if (app.Environment.IsDevelopment())
+{
+    using var scope = app.Services.CreateScope();
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    var passwordHasher = scope.ServiceProvider.GetRequiredService<IPasswordHasher>();
+    await AuthSeeder.SeedAdminAsync(db, passwordHasher, app.Configuration, CancellationToken.None);
+}
 
 app.UseSerilogRequestLogging();
 app.UseAuthentication();

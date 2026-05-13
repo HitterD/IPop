@@ -1,5 +1,6 @@
 @page "/admin/users"
 @attribute [Microsoft.AspNetCore.Authorization.Authorize(Policy = SJAConnect.Shared.Auth.AuthorizationPolicies.RequireAdmin)]
+@using Microsoft.AspNetCore.Components.Web
 @using MudBlazor
 
 <PageTitle>Users — Admin</PageTitle>

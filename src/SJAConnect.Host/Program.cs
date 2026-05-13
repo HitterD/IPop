@@ -40,7 +40,9 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.UseAntiforgery();
 
-app.MapRazorComponents<App>().AddInteractiveServerRenderMode();
+app.MapRazorComponents<App>()
+    .AddInteractiveServerRenderMode()
+    .AddAdditionalAssemblies(typeof(SJAConnect.Modules.Auth.AuthModule).Assembly);
 foreach (var m in modules)
 {
     m.MapEndpoints(app);

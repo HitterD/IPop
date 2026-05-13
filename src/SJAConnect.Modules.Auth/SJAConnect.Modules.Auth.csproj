@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk.Razor">
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>
@@ -10,6 +10,7 @@
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
     <PackageReference Include="System.IdentityModel.Tokens.Jwt" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" />
+    <PackageReference Include="MudBlazor" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\SJAConnect.Shared\SJAConnect.Shared.csproj" />
