@@ -1,0 +1,417 @@
+@page "/im"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Policy = IPop.Shared.Auth.AuthorizationPolicies.RequireAuthenticated)]
+@using System.Net.Http.Json
+@using System.Security.Claims
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Components.Web
+@using Microsoft.AspNetCore.SignalR.Client
+@using IPop.Modules.Chat.Application.Abstractions
+@using IPop.Modules.Chat.Application.Im
+@using IPop.Modules.Chat.Domain
+@inject AuthenticationStateProvider AuthStateProvider
+@inject NavigationManager Nav
+@inject IImRepository ImRepository
+@inject HttpClient Http
+@implements IAsyncDisposable
+
+<PageTitle>Inbox — IPop</PageTitle>
+<link rel="stylesheet" href="/css/im.css" />
+
+<div class="ipop-im-shell">
+    <!-- SIDEBAR -->
+    <aside class="ipop-im-sidebar @(_loaded ? "is-ready" : "")">
+        <div class="ipop-im-sidebar__title">IPop IM</div>
+        <button class="ipop-im-compose-btn" type="button" @onclick="OpenCompose">✏ Compose</button>
+
+        @foreach (var (folder, label) in _folders)
+        {
+            var isActive = _currentFolder == folder;
+            <div class="ipop-im-folder @(isActive ? "is-active" : "")" @onclick="() => SelectFolderAsync(folder)">
+                <span>@label</span>
+                @if (folder == ImFolder.Inbox && _unreadCount > 0)
+                {
+                    <span class="ipop-im-folder__badge">@_unreadCount</span>
+                }
+            </div>
+        }
+
+        <div class="ipop-im-divider"></div>
+        <div class="ipop-im-section-label">Filters</div>
+        <div class="ipop-im-folder">Unread</div>
+        <div class="ipop-im-folder">Attachments</div>
+    </aside>
+
+    <!-- MESSAGE LIST -->
+    <section class="ipop-im-list @(_loaded ? "is-ready" : "")">
+        <div class="ipop-im-list__header">
+            <h2>@_currentFolder.ToString()</h2>
+            <span class="ipop-im-list__count">@_messages.Count message(s)</span>
+        </div>
+        <div class="ipop-im-messages">
+            @foreach (var msg in _messages)
+            {
+                var isActive = _selectedMessageId == msg.Id;
+                var isUnread = !msg.IsRead;
+                <div class="ipop-im-row @(isActive ? "is-active" : "") @(isUnread ? "is-unread" : "")"
+                     @onclick="() => SelectMessageAsync(msg)">
+                    <div class="ipop-im-unread-dot @(isUnread ? "" : "empty")"></div>
+                    <div class="ipop-chat-person__avatar">@Initials(msg.SenderDisplayName)</div>
+                    <div>
+                        <div class="ipop-im-row__sender">@msg.SenderDisplayName</div>
+                        <div class="ipop-im-row__subject">@msg.Subject</div>
+                        <div class="ipop-im-row__preview">@msg.BodyPlain</div>
+                    </div>
+                    <div class="ipop-im-row__time">@Relative(msg.SentAt)</div>
+                </div>
+            }
+        </div>
+    </section>
+
+    <!-- PREVIEW PANE -->
+    <section class="ipop-im-preview @(_loaded ? "is-ready" : "")">
+        @if (_detail is null)
+        {
+            <div class="ipop-im-placeholder">
+                <span class="ipop-im-placeholder__glyph">✉</span>
+                <h2>Pick a message</h2>
+                <p>Select a message on the left to read it.</p>
+            </div>
+        }
+        else
+        {
+            <div class="ipop-im-preview__header">
+                <div class="ipop-im-preview__subject">@_detail.Subject</div>
+                <div class="ipop-im-preview__meta">
+                    <span>From <b>@_detail.SenderDisplayName</b></span>
+                    <span>·</span>
+                    <span>To <b>@string.Join(", ", _detail.Recipients.Where(r => r.Folder == ImFolder.Inbox).Select(r => r.DisplayName))</b></span>
+                    <span>·</span>
+                    <span>@_detail.SentAt.ToLocalTime().ToString("dd MMM HH:mm")</span>
+                    @if (_detail.ThreadReplies.Count > 0)
+                    {
+                        <span style="margin-left:auto;font-size:0.65rem;color:var(--ipop-ink-soft)">@_detail.ThreadReplies.Count repl@(_detail.ThreadReplies.Count == 1 ? "y" : "ies")</span>
+                    }
+                </div>
+                <div class="ipop-im-preview__actions">
+                    <button class="ipop-im-btn primary" type="button" @onclick="() => StartReply(ImMessageType.Reply)">↩ Reply</button>
+                    <button class="ipop-im-btn" type="button" @onclick="() => StartReply(ImMessageType.ReplyAll)">↩↩ Reply All</button>
+                    <button class="ipop-im-btn" type="button" @onclick="() => StartReply(ImMessageType.Forward)">→ Forward</button>
+                    <button class="ipop-im-btn" type="button" style="margin-left:auto" @onclick="DeleteSelectedAsync">🗑 Delete</button>
+                </div>
+            </div>
+
+            <!-- THREAD TIMELINE -->
+            <div class="ipop-im-thread">
+                @{ var allNodes = new List<(ImMessageSummary? Summary, ImMessageDetail? Detail)>(); }
+                @* Original message as first node *@
+                <div class="ipop-im-thread-node @(_detail.SenderUserId == _currentUserId ? "is-me" : "")">
+                    <div class="ipop-im-thread-dot"></div>
+                    <div class="ipop-im-thread-card @(_expandedNodes.Contains(_detail.Id) ? "" : "")" id="node-@_detail.Id">
+                        <div class="ipop-im-thread-card__header" @onclick="() => ToggleNode(_detail.Id)">
+                            <div class="av">@Initials(_detail.SenderDisplayName)</div>
+                            <div class="who">@_detail.SenderDisplayName</div>
+                            <div class="tm">@_detail.SentAt.ToLocalTime().ToString("ddd dd MMM · HH:mm")</div>
+                            <div class="tog">▾</div>
+                        </div>
+                        @if (_expandedNodes.Contains(_detail.Id))
+                        {
+                            <div class="ipop-im-thread-card__body">
+                                @((Microsoft.AspNetCore.Components.MarkupString)_detail.Body)
+                                @if (_detail.Attachments.Count > 0)
+                                {
+                                    <div class="ipop-im-thread-card__attachments">
+                                        @foreach (var att in _detail.Attachments)
+                                        {
+                                            <a class="ipop-im-thread-card__file" href="@att.DownloadUrl" target="_blank">
+                                                <b>@att.ContentType.Split('/').LastOrDefault()?.ToUpperInvariant()</b>
+                                                @att.OriginalName
+                                            </a>
+                                        }
+                                    </div>
+                                }
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                @* Thread replies *@
+                @foreach (var reply in _detail.ThreadReplies)
+                {
+                    var isMe = reply.SenderUserId == _currentUserId;
+                    var expanded = _expandedNodes.Contains(reply.Id);
+                    <div class="ipop-im-thread-node @(isMe ? "is-me" : "")">
+                        <div class="ipop-im-thread-dot"></div>
+                        <div class="ipop-im-thread-card @(expanded ? "" : "is-collapsed")">
+                            <div class="ipop-im-thread-card__header" @onclick="() => ToggleNode(reply.Id)">
+                                <div class="av">@Initials(reply.SenderDisplayName)</div>
+                                <div class="who">@reply.SenderDisplayName</div>
+                                <div class="tm">@reply.SentAt.ToLocalTime().ToString("HH:mm")</div>
+                                <div class="tog">▾</div>
+                            </div>
+                            @if (expanded)
+                            {
+                                <div class="ipop-im-thread-card__body">
+                                    <p>@reply.BodyPlain</p>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+
+            <!-- QUICK REPLY -->
+            <div class="ipop-im-quick-reply">
+                <div class="ipop-im-quick-reply__bar">
+                    <textarea @bind="_replyDraft" @bind:event="oninput"
+                              placeholder="@(_replyMode == ImMessageType.Reply ? "Reply…" : _replyMode == ImMessageType.ReplyAll ? "Reply all…" : "Forward…")"
+                              rows="2"></textarea>
+                    <button class="ipop-im-send-btn" type="button"
+                            disabled="@(string.IsNullOrWhiteSpace(_replyDraft))"
+                            @onclick="SendReplyAsync">Send ↑</button>
+                </div>
+                <div class="ipop-im-quick-reply__hint">
+                    <span>Shift+Enter for newline</span>
+                    <span>·</span>
+                    <span>Full compose →</span>
+                </div>
+            </div>
+        }
+    </section>
+</div>
+
+@* COMPOSE MODAL *@
+@if (_showCompose)
+{
+    <div style="position:fixed;inset:0;background:rgba(16,42,42,0.35);z-index:300;display:flex;align-items:center;justify-content:center" @onclick="CloseCompose">
+        <div style="background:var(--ipop-surface-raised);border-radius:20px;padding:24px;width:min(600px,90vw);box-shadow:0 40px 80px -30px var(--ipop-shadow);display:flex;flex-direction:column;gap:14px" @onclick:stopPropagation="true">
+            <div style="font-family:'Plus Jakarta Sans',sans-serif;font-size:1.1rem;font-weight:800">New Message</div>
+            @if (!string.IsNullOrEmpty(_composeError))
+            {
+                <div style="color:tomato;font-size:0.8rem">@_composeError</div>
+            }
+            <input @bind="_composeSubject" placeholder="Subject" style="border:1px solid var(--ipop-line);border-radius:10px;padding:9px 12px;font:inherit;background:var(--ipop-surface)" />
+            <textarea @bind="_composeBody" placeholder="Message body…" rows="6" style="border:1px solid var(--ipop-line);border-radius:10px;padding:9px 12px;font:inherit;background:var(--ipop-surface);resize:vertical"></textarea>
+            <div style="display:flex;gap:8px;justify-content:flex-end">
+                <button class="ipop-im-btn" type="button" @onclick="CloseCompose">Cancel</button>
+                <button class="ipop-im-btn primary" type="button"
+                        disabled="@(string.IsNullOrWhiteSpace(_composeSubject) || string.IsNullOrWhiteSpace(_composeBody))"
+                        @onclick="SendComposeAsync">Send</button>
+            </div>
+        </div>
+    </div>
+}
+
+@* DESKTOP POPUP *@
+@if (_popup is not null)
+{
+    <div class="ipop-im-popup">
+        <div class="ipop-im-popup__avatar">@Initials(_popup.SenderDisplayName)</div>
+        <div class="ipop-im-popup__body">
+            <div class="ipop-im-popup__tag">IPop IM</div>
+            <div class="ipop-im-popup__title">@_popup.SenderDisplayName · @_popup.Subject</div>
+            <div class="ipop-im-popup__sub">@_popup.BodyPlain</div>
+            <div class="ipop-im-popup__actions">
+                <button class="open" type="button" @onclick="() => OpenPopupMessage(_popup)">Open</button>
+                <button type="button" @onclick="DismissPopup">Dismiss</button>
+            </div>
+        </div>
+        <div class="ipop-im-popup__close" @onclick="DismissPopup">×</div>
+    </div>
+}
+
+@code {
+    private static readonly (ImFolder Folder, string Label)[] _folders =
+    [
+        (ImFolder.Inbox, "Inbox"),
+        (ImFolder.Sent, "Sent"),
+        (ImFolder.Deleted, "Deleted")
+    ];
+
+    private Guid _currentUserId;
+    private ImFolder _currentFolder = ImFolder.Inbox;
+    private List<ImMessageSummary> _messages = new();
+    private Guid? _selectedMessageId;
+    private ImMessageDetail? _detail;
+    private HashSet<Guid> _expandedNodes = new();
+    private int _unreadCount;
+    private bool _loaded;
+    private string _replyDraft = string.Empty;
+    private ImMessageType _replyMode = ImMessageType.Reply;
+    private bool _showCompose;
+    private string _composeSubject = string.Empty;
+    private string _composeBody = string.Empty;
+    private string? _composeError;
+    private ImMessageSummary? _popup;
+    private HubConnection? _hub;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var auth = await AuthStateProvider.GetAuthenticationStateAsync();
+        var claim = auth.User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (!Guid.TryParse(claim, out _currentUserId))
+        {
+            Nav.NavigateTo("/login");
+            return;
+        }
+
+        await LoadFolderAsync();
+        _unreadCount = await ImRepository.GetUnreadCountAsync(_currentUserId, default);
+
+        _hub = new HubConnectionBuilder()
+            .WithUrl(Nav.ToAbsoluteUri("/hubs/desktop-notifications"))
+            .WithAutomaticReconnect()
+            .Build();
+        _hub.On<object>("ReceiveNotification", async payload =>
+        {
+            await InvokeAsync(async () =>
+            {
+                await LoadFolderAsync();
+                _unreadCount = await ImRepository.GetUnreadCountAsync(_currentUserId, default);
+                StateHasChanged();
+            });
+        });
+        try { await _hub.StartAsync(); } catch { }
+
+        _loaded = true;
+    }
+
+    private async Task LoadFolderAsync()
+    {
+        _messages = (await ImRepository.ListAsync(_currentUserId, _currentFolder, default)).ToList();
+    }
+
+    private async Task SelectFolderAsync(ImFolder folder)
+    {
+        _currentFolder = folder;
+        _selectedMessageId = null;
+        _detail = null;
+        _expandedNodes.Clear();
+        await LoadFolderAsync();
+    }
+
+    private async Task SelectMessageAsync(ImMessageSummary msg)
+    {
+        _selectedMessageId = msg.Id;
+        _detail = await ImRepository.GetDetailAsync(_currentUserId, msg.Id, default);
+        _expandedNodes.Clear();
+        if (_detail is not null)
+        {
+            _expandedNodes.Add(_detail.Id); // expand original by default
+        }
+        _replyDraft = string.Empty;
+        _replyMode = ImMessageType.Reply;
+
+        if (!msg.IsRead)
+        {
+            await ImRepository.MarkReadAsync(_currentUserId, msg.Id, DateTimeOffset.UtcNow, default);
+            _unreadCount = await ImRepository.GetUnreadCountAsync(_currentUserId, default);
+            await LoadFolderAsync();
+        }
+    }
+
+    private void ToggleNode(Guid id)
+    {
+        if (!_expandedNodes.Remove(id))
+            _expandedNodes.Add(id);
+    }
+
+    private void StartReply(ImMessageType mode)
+    {
+        _replyMode = mode;
+        _replyDraft = string.Empty;
+    }
+
+    private async Task SendReplyAsync()
+    {
+        if (_detail is null || string.IsNullOrWhiteSpace(_replyDraft)) return;
+        var recipients = _replyMode == ImMessageType.Reply
+            ? new List<Guid> { _detail.SenderUserId }
+            : _detail.Recipients.Where(r => r.UserId != _currentUserId).Select(r => r.UserId).ToList();
+
+        var req = new { recipientUserIds = recipients, subject = $"Re: {_detail.Subject}", body = _replyDraft, parentMessageId = (Guid?)_detail.Id, messageType = (int)_replyMode };
+        var http = new HttpRequestMessage(HttpMethod.Post, "/api/im/");
+        http.Headers.Add("X-Requested-With", "IPopChat");
+        http.Content = JsonContent.Create(req);
+        var resp = await Http.SendAsync(http);
+        if (resp.IsSuccessStatusCode)
+        {
+            _replyDraft = string.Empty;
+            await SelectMessageAsync(_messages.First(m => m.Id == _detail.Id));
+        }
+    }
+
+    private async Task DeleteSelectedAsync()
+    {
+        if (_selectedMessageId is null) return;
+        var req = new { messageIds = new[] { _selectedMessageId.Value } };
+        var http = new HttpRequestMessage(HttpMethod.Post, "/api/im/delete");
+        http.Headers.Add("X-Requested-With", "IPopChat");
+        http.Content = JsonContent.Create(req);
+        await Http.SendAsync(http);
+        _selectedMessageId = null;
+        _detail = null;
+        await LoadFolderAsync();
+    }
+
+    private void OpenCompose()
+    {
+        _composeSubject = string.Empty;
+        _composeBody = string.Empty;
+        _composeError = null;
+        _showCompose = true;
+    }
+
+    private void CloseCompose() => _showCompose = false;
+
+    private async Task SendComposeAsync()
+    {
+        _composeError = null;
+        var req = new { recipientUserIds = new List<Guid>(), subject = _composeSubject, body = _composeBody, parentMessageId = (Guid?)null, messageType = 0 };
+        var http = new HttpRequestMessage(HttpMethod.Post, "/api/im/");
+        http.Headers.Add("X-Requested-With", "IPopChat");
+        http.Content = JsonContent.Create(req);
+        var resp = await Http.SendAsync(http);
+        if (resp.IsSuccessStatusCode)
+        {
+            _showCompose = false;
+            await LoadFolderAsync();
+        }
+        else
+        {
+            _composeError = "Failed to send. Please try again.";
+        }
+    }
+
+    private void DismissPopup() => _popup = null;
+
+    private async Task OpenPopupMessage(ImMessageSummary msg)
+    {
+        _popup = null;
+        _currentFolder = ImFolder.Inbox;
+        await LoadFolderAsync();
+        await SelectMessageAsync(msg);
+    }
+
+    private static string Initials(string name)
+    {
+        var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        return parts.Length >= 2
+            ? $"{parts[0][0]}{parts[1][0]}".ToUpperInvariant()
+            : name.Length >= 2 ? name[..2].ToUpperInvariant() : name.ToUpperInvariant();
+    }
+
+    private static string Relative(DateTimeOffset at)
+    {
+        var diff = DateTimeOffset.UtcNow - at;
+        if (diff.TotalMinutes < 1) return "now";
+        if (diff.TotalHours < 1) return $"{(int)diff.TotalMinutes}m";
+        if (diff.TotalDays < 1) return at.ToLocalTime().ToString("HH:mm");
+        if (diff.TotalDays < 7) return at.ToLocalTime().ToString("ddd");
+        return at.ToLocalTime().ToString("dd MMM");
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_hub is not null) await _hub.DisposeAsync();
+    }
+}

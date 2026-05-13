@@ -36,6 +36,7 @@ public static class DependencyInjection
         services.AddScoped<IAuditWriter, EfAuditWriter>();
         services.AddScoped<IChatRepository, EfChatRepository>();
         services.AddScoped<IChannelRepository, EfChannelRepository>();
+        services.AddScoped<IImRepository, EfImRepository>();
         services.AddSingleton<IPresenceService, RedisPresenceService>();
         services.Configure<FileStorageOptions>(configuration.GetSection("FileStorage"));
         services.AddScoped<IFileStorage, LocalFileStorage>();

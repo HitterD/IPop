@@ -18,6 +18,9 @@ public sealed class AppDbContext : DbContext
     public DbSet<Channel> Channels => Set<Channel>();
     public DbSet<ChannelMember> ChannelMembers => Set<ChannelMember>();
     public DbSet<ChannelMessage> ChannelMessages => Set<ChannelMessage>();
+    public DbSet<ImMessage> ImMessages => Set<ImMessage>();
+    public DbSet<ImRecipient> ImRecipients => Set<ImRecipient>();
+    public DbSet<ImAttachment> ImAttachments => Set<ImAttachment>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

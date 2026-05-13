@@ -31,8 +31,10 @@ public sealed class ChatModule : IModule
     {
         endpoints.MapHub<ChatHub>("/hubs/chat").RequireAuthorization(AuthorizationPolicies.RequireAuthenticated);
         endpoints.MapHub<ChannelHub>("/hubs/channels").RequireAuthorization(AuthorizationPolicies.RequireAuthenticated);
+        endpoints.MapHub<DesktopNotificationHub>("/hubs/desktop-notifications").RequireAuthorization(AuthorizationPolicies.RequireAuthenticated);
 
         ChannelEndpoints.Map(endpoints);
+        ImEndpoints.Map(endpoints);
 
         endpoints.MapPost("/api/chat/attachments", async (
                 HttpContext httpContext,
