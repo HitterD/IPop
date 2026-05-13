@@ -1,0 +1,269 @@
+@page "/channels"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Policy = IPop.Shared.Auth.AuthorizationPolicies.RequireAuthenticated)]
+@using System.Net.Http.Json
+@using System.Security.Claims
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.SignalR.Client
+@using Microsoft.AspNetCore.Components.Web
+@using IPop.Modules.Chat.Application.Channels
+@inject AuthenticationStateProvider AuthStateProvider
+@inject NavigationManager Nav
+@inject HttpClient Http
+@implements IAsyncDisposable
+
+<PageTitle>Channels — IPop</PageTitle>
+
+<div class="ipop-chat-shell">
+    <aside class="ipop-chat-sidebar is-ready">
+        <header class="ipop-chat-sidebar__header">
+            <h1>Channels</h1>
+            <span class="ipop-chat-sidebar__hint">@_channels.Count channel(s)</span>
+        </header>
+
+        <div class="ipop-chat-create" style="padding:0.75rem 1rem;display:flex;flex-direction:column;gap:0.5rem;">
+            <input @bind="_newChannelName" placeholder="New channel name" />
+            <select @bind="_newChannelType">
+                <option value="Public">Public</option>
+                <option value="Private">Private</option>
+            </select>
+            <button type="button" @onclick="CreateChannelAsync" disabled="@(string.IsNullOrWhiteSpace(_newChannelName))">Create</button>
+            @if (!string.IsNullOrEmpty(_error))
+            {
+                <p style="color:tomato;font-size:0.85rem;">@_error</p>
+            }
+        </div>
+
+        <ul class="ipop-chat-people">
+            @foreach (var channel in _channels)
+            {
+                var isActive = _selectedChannelId == channel.ChannelId;
+                <li class="ipop-chat-person @(isActive ? "is-active" : "")">
+                    <button type="button" @onclick="() => SelectChannelAsync(channel)">
+                        <span class="ipop-chat-person__avatar">#</span>
+                        <span class="ipop-chat-person__body">
+                            <span class="ipop-chat-person__name-row">
+                                <span class="ipop-chat-person__name">@channel.Name</span>
+                                <span class="ipop-ext-chip">@channel.Type</span>
+                            </span>
+                            <span class="ipop-chat-person__preview">@(string.IsNullOrEmpty(channel.LastMessagePreview) ? channel.Description ?? "" : channel.LastMessagePreview)</span>
+                        </span>
+                        @if (!channel.IsMember && channel.Type == ChannelTypeDto.Public)
+                        {
+                            <span class="ipop-chat-person__time">join</span>
+                        }
+                    </button>
+                </li>
+            }
+        </ul>
+    </aside>
+
+    <section class="ipop-chat-thread is-ready">
+        @if (_selectedChannelId is null)
+        {
+            <div class="ipop-chat-thread__placeholder">
+                <span class="ipop-chat-thread__placeholder-glyph">#</span>
+                <h2>Pick a channel</h2>
+                <p>Select a channel on the left to view messages.</p>
+            </div>
+        }
+        else
+        {
+            <header class="ipop-chat-thread__header">
+                <div>
+                    <span class="ipop-chat-thread__avatar">#</span>
+                    <div>
+                        <h2>@_selectedChannelName</h2>
+                        <p class="ipop-chat-thread__status">@(_isMember ? "Channel" : "Preview")</p>
+                    </div>
+                </div>
+                <span class="ipop-chat-thread__connection @(_hubConnected ? "is-live" : "is-off")"></span>
+            </header>
+
+            <div class="ipop-chat-thread__stream">
+                @if (!_isMember)
+                {
+                    <div class="ipop-chat-thread__placeholder">
+                        <h2>Not a member</h2>
+                        <button type="button" @onclick="JoinSelectedAsync">Join channel</button>
+                    </div>
+                }
+                else
+                {
+                    @foreach (var msg in _messages)
+                    {
+                        var mine = msg.SenderUserId == _currentUserId;
+                        <article class="ipop-chat-bubble @(mine ? "is-mine" : "is-theirs")">
+                            <header style="font-size:0.75rem;opacity:0.7;">@msg.SenderDisplayName</header>
+                            <p>@msg.Body</p>
+                            <footer>
+                                <time>@msg.SentAt.ToLocalTime().ToString("HH:mm")</time>
+                            </footer>
+                        </article>
+                    }
+                }
+            </div>
+
+            @if (_isMember)
+            {
+                <form class="ipop-chat-composer" @onsubmit="SendAsync" @onsubmit:preventDefault="true">
+                    <textarea value="@_draft" @oninput="OnDraftInput" placeholder="Message #@_selectedChannelName" rows="2"></textarea>
+                    <div class="ipop-chat-composer__actions">
+                        <span class="ipop-chat-composer__hint">Enter to send</span>
+                        <button type="submit" disabled="@(string.IsNullOrWhiteSpace(_draft) || !_hubConnected)">Send</button>
+                    </div>
+                </form>
+            }
+        }
+    </section>
+</div>
+
+@code {
+    private Guid _currentUserId;
+    private List<ChannelSummary> _channels = new();
+    private Guid? _selectedChannelId;
+    private string _selectedChannelName = string.Empty;
+    private bool _isMember;
+    private List<ChannelMessageDto> _messages = new();
+    private string _draft = string.Empty;
+    private string _newChannelName = string.Empty;
+    private string _newChannelType = "Public";
+    private string? _error;
+    private bool _hubConnected;
+    private HubConnection? _hub;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var auth = await AuthStateProvider.GetAuthenticationStateAsync();
+        var userIdClaim = auth.User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (!Guid.TryParse(userIdClaim, out _currentUserId))
+        {
+            Nav.NavigateTo("/login");
+            return;
+        }
+
+        await LoadChannelsAsync();
+
+        _hub = new HubConnectionBuilder()
+            .WithUrl(Nav.ToAbsoluteUri("/hubs/channels"))
+            .WithAutomaticReconnect()
+            .Build();
+        _hub.On<ChannelMessageDto>("ChannelMessageReceived", OnChannelMessageReceived);
+        _hub.On<Guid, Guid, bool>("ChannelMembershipChanged", OnMembershipChanged);
+        _hub.Reconnected += _ => { _hubConnected = true; return InvokeAsync(StateHasChanged); };
+        _hub.Reconnecting += _ => { _hubConnected = false; return InvokeAsync(StateHasChanged); };
+        _hub.Closed += _ => { _hubConnected = false; return InvokeAsync(StateHasChanged); };
+        try
+        {
+            await _hub.StartAsync();
+            _hubConnected = true;
+        }
+        catch
+        {
+            _hubConnected = false;
+        }
+    }
+
+    private async Task LoadChannelsAsync()
+    {
+        var list = await Http.GetFromJsonAsync<List<ChannelSummary>>("/api/channels/");
+        _channels = list ?? new List<ChannelSummary>();
+    }
+
+    private async Task CreateChannelAsync()
+    {
+        _error = null;
+        var req = new { name = _newChannelName.Trim(), description = (string?)null, type = _newChannelType == "Private" ? 1 : 0 };
+        var http = new HttpRequestMessage(HttpMethod.Post, "/api/channels/");
+        http.Headers.Add("X-Requested-With", "IPopChat");
+        http.Content = JsonContent.Create(req);
+        var resp = await Http.SendAsync(http);
+        if (!resp.IsSuccessStatusCode)
+        {
+            _error = await resp.Content.ReadAsStringAsync();
+            return;
+        }
+        _newChannelName = string.Empty;
+        await LoadChannelsAsync();
+    }
+
+    private async Task SelectChannelAsync(ChannelSummary channel)
+    {
+        _selectedChannelId = channel.ChannelId;
+        _selectedChannelName = channel.Name;
+        _isMember = channel.IsMember;
+        if (_isMember)
+        {
+            var list = await Http.GetFromJsonAsync<List<ChannelMessageDto>>($"/api/channels/{channel.ChannelId}/messages");
+            _messages = list ?? new List<ChannelMessageDto>();
+        }
+        else
+        {
+            _messages = new List<ChannelMessageDto>();
+        }
+    }
+
+    private async Task JoinSelectedAsync()
+    {
+        if (_selectedChannelId is null || _hub is null) return;
+        try
+        {
+            await _hub.InvokeAsync("JoinChannel", _selectedChannelId.Value);
+            _isMember = true;
+            await LoadChannelsAsync();
+            var list = await Http.GetFromJsonAsync<List<ChannelMessageDto>>($"/api/channels/{_selectedChannelId.Value}/messages");
+            _messages = list ?? new List<ChannelMessageDto>();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+    }
+
+    private async Task SendAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_draft) || _selectedChannelId is null || _hub is null) return;
+        var body = _draft.Trim();
+        _draft = string.Empty;
+        try
+        {
+            await _hub.InvokeAsync("SendChannelMessage", _selectedChannelId.Value, Guid.NewGuid(), body);
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+    }
+
+    private void OnDraftInput(ChangeEventArgs args)
+    {
+        _draft = args.Value?.ToString() ?? string.Empty;
+    }
+
+    private async Task OnChannelMessageReceived(ChannelMessageDto message)
+    {
+        if (_selectedChannelId == message.ChannelId)
+        {
+            _messages.Add(message);
+            await InvokeAsync(StateHasChanged);
+        }
+        await LoadChannelsAsync();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task OnMembershipChanged(Guid channelId, Guid userId, bool joined)
+    {
+        if (userId == _currentUserId)
+        {
+            await LoadChannelsAsync();
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_hub is not null)
+        {
+            await _hub.DisposeAsync();
+        }
+    }
+}
